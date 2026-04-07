@@ -9,6 +9,32 @@ their vendor logic.
 
 Version `0.1.2` is the current documented baseline.
 
+> New to PiPhi? Start with [The Golden Path](#the-golden-path), then read [The IDs You Need To Understand](#the-ids-you-need-to-understand), then compare your code to the example apps.
+
+## Quick Navigation
+
+- [Who this is for](#who-this-is-for)
+- [Install](#install)
+- [The Golden Path](#the-golden-path)
+- [UI Config Endpoints](#ui-config-endpoints)
+- [The IDs You Need To Understand](#the-ids-you-need-to-understand)
+- [Plain-Language Concepts](#plain-language-concepts)
+- [Typical Runtime Flow](#typical-runtime-flow)
+- [Thin framework adapters](#thin-framework-adapters)
+- [Clear Error Handling](#clear-error-handling)
+- [Common Mistakes](#common-mistakes)
+- [Troubleshooting](#troubleshooting)
+- [Current package shape](#current-package-shape)
+
+## Reading Paths
+
+- New developer
+  Read `The Golden Path`, `The IDs You Need To Understand`, and `Plain-Language Concepts`.
+- Framework-focused developer
+  Read `The Golden Path`, `Thin framework adapters`, and the example app READMEs.
+- Debugging a runtime
+  Jump to `Clear Error Handling`, `Common Mistakes`, and `Troubleshooting`.
+
 ## Who this is for
 
 This SDK is for developers building PiPhi integrations in Node.js or TypeScript.
@@ -221,6 +247,67 @@ The example apps are the intended reference implementations:
 - [`examples/minimal_fastify_runtime/app.ts`](./examples/minimal_fastify_runtime/app.ts)
 - [`examples/minimal_fastify_runtime/README.md`](./examples/minimal_fastify_runtime/README.md)
 
+## UI Config Endpoints
+
+Many integrations expose `/ui` or `/ui-config` so the PiPhi frontend knows how
+to render a configuration form.
+
+The important thing to know is:
+
+- this is still just plain JSON
+- the runtime SDK does not require a special wrapper for it
+- your integration can return schema data directly
+
+The usual pattern is to return:
+
+- a JSON Schema object under `schema`
+- a UI customization object under `uiSchema`
+
+Simple example:
+
+```ts
+app.get("/ui-config", (_req, res) => {
+  res.json({
+    schema: {
+      title: "Demo Device Setup",
+      type: "object",
+      required: ["host"],
+      properties: {
+        host: {
+          type: "string",
+          title: "Host",
+        },
+        alias: {
+          type: "string",
+          title: "Alias",
+        },
+      },
+    },
+    uiSchema: {
+      host: {
+        placeholder: "192.168.1.50",
+      },
+      alias: {
+        placeholder: "Office Sensor",
+      },
+    },
+  });
+});
+```
+
+If your frontend uses `svelte-jsonschema-form`, the official docs are here:
+
+- https://x0k.dev/svelte-jsonschema-form/
+
+That library is a good fit when your frontend is already rendering JSON Schema
+forms and you want integrations to stay simple by returning plain schema data.
+
+For now, the recommended SDK approach is:
+
+- document `/ui-config`
+- return plain JSON schema/uiSchema objects
+- keep frontend-specific form helpers outside the runtime SDK
+
 ## The IDs You Need To Understand
 
 These ids show up in most integrations:
@@ -240,6 +327,55 @@ The most common mistake is confusing `id` with `configId`.
 
 If you are sending events back to Core, `configId`, `containerId`, and
 `integrationId` need to be correct.
+
+## Plain-Language Concepts
+
+If you are new to the platform, these terms can feel heavier than they are.
+Here is the simple version.
+
+- `snapshot`
+  A snapshot is PiPhi saying, "This is the full list of configs you should have right now."
+  Your job is to make the runtime match that list.
+  Example:
+  `await configSync.applySnapshot(snapshot, { activeConfigIds: registry.ids(), applyConfig, removeConfig, getActiveConfigIds: () => registry.ids() })`
+- `config sync`
+  Config sync is the act of comparing the runtime's current configs to the new
+  snapshot, then adding the missing ones and removing the stale ones.
+  Example:
+  `const typedConfigs = snapshot.configs.map((config) => ({ ...config, host: String(config.host) }));`
+- `registry`
+  The registry is the runtime's in-memory notebook. It keeps the active device
+  entries, recent state, and recent events.
+  Example:
+  `registry.set(payload.id, { deviceId: payload.deviceId ?? payload.id, configId: payload.configId ?? payload.id, host: payload.host, config: payload });`
+- `telemetry`
+  Telemetry is a stream of measurements, like temperature, power, humidity,
+  battery, or signal strength.
+  Example:
+  `scheduleTelemetryDelivery({ processState: runtime.processState, telemetryClient: telemetry, authContext: runtime.auth, deviceId: "sensor-1", metrics: { temperatureC: 21.4 }, units: { temperatureC: "C" } });`
+- `event`
+  An event is a meaningful occurrence, like "device configured" or
+  "sensor disconnected."
+  Example:
+  `registry.appendEvent(buildLocalEventRecord({ eventType: "device.configured", deviceId: "sensor-1", configId: "core-config-uuid", source: "demo-runtime", severity: "info", payload: { host: "127.0.0.1" } }));`
+- `containerId`
+  This is the identity of the running runtime from Core's point of view.
+  Example:
+  `syncRuntimeAuthFromExpressRequest(runtime, req, payload.containerId);`
+- `configId`
+  This is the real Core-side id for the config. When Core needs the official
+  config identity, this is the one it expects.
+  Example:
+  `const entry = { configId: payload.configId ?? payload.id, deviceId: payload.deviceId ?? payload.id };`
+- `deviceId`
+  This is the actual device or logical thing being monitored or controlled.
+  Example:
+  `await telemetry.sendMetrics({ authContext: runtime.auth, deviceId: "sensor-1", metrics: { connected: true } });`
+- `starter`
+  The starter is the beginner-friendly SDK bundle that gives you the common
+  runtime pieces in one place.
+  Example:
+  `const starter = createRuntimeStarter({ integrationId: "demo-runtime", integrationName: "Demo Runtime", version: "0.1.0" });`
 
 ## Typical Runtime Flow
 
