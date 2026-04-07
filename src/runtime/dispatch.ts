@@ -1,0 +1,87 @@
+import { RuntimeAuthContext } from "./auth.js";
+import { RuntimeProcessState } from "./state.js";
+import { createTrackedTask } from "./tasks.js";
+import { EventClient, buildCoreEventPayload } from "./events.js";
+import { TelemetryClient } from "./telemetry.js";
+
+/**
+ * Build a local event record before persisting or returning it.
+ */
+export function buildLocalEventRecord<TEvent extends Record<string, unknown>>(event: TEvent): TEvent {
+  return {
+    receivedAt: new Date().toISOString(),
+    ...event,
+  } as TEvent;
+}
+
+/**
+ * Dispatch one telemetry delivery task in the background.
+ */
+export function scheduleTelemetryDelivery(options: {
+  processState: RuntimeProcessState;
+  telemetryClient: TelemetryClient;
+  authContext: RuntimeAuthContext;
+  deviceId: string;
+  metrics: Record<string, unknown>;
+  units?: Record<string, string>;
+  containerId?: string | null;
+}): Promise<void> {
+  const telemetryOptions: {
+    authContext: RuntimeAuthContext;
+    deviceId: string;
+    metrics: Record<string, unknown>;
+    units?: Record<string, string>;
+    containerId?: string | null;
+  } = {
+    authContext: options.authContext,
+    deviceId: options.deviceId,
+    metrics: options.metrics,
+  };
+
+  if (options.units !== undefined) {
+    telemetryOptions.units = options.units;
+  }
+
+  if (options.containerId !== undefined) {
+    telemetryOptions.containerId = options.containerId;
+  }
+
+  return createTrackedTask(
+    options.processState,
+    options.telemetryClient.sendMetrics(telemetryOptions),
+  );
+}
+
+/**
+ * Dispatch one Core event delivery task in the background.
+ */
+export function scheduleEventDelivery(options: {
+  processState: RuntimeProcessState;
+  eventClient: EventClient;
+  authContext: RuntimeAuthContext;
+  eventType: string;
+  device: Record<string, unknown>;
+  payload?: Record<string, unknown>;
+  source?: string;
+}): Promise<void> {
+  const coreEvent = buildCoreEventPayload({
+    eventType: options.eventType,
+    ...(options.source ? { source: options.source } : {}),
+    ...(options.payload ? { payload: options.payload } : {}),
+    configId: String(options.device.configId ?? options.device.deviceId ?? ""),
+    containerId: String(options.device.containerId ?? options.authContext.containerId ?? ""),
+    integrationId: String(options.device.integrationId ?? ""),
+    ...(options.device.deviceId ? { deviceId: String(options.device.deviceId) } : {}),
+  });
+
+  return createTrackedTask(
+    options.processState,
+    options.eventClient.sendEvent({
+      authContext: options.authContext,
+      event: coreEvent,
+    }),
+  );
+}
+
+export const dispatchTelemetryDelivery = scheduleTelemetryDelivery;
+export const dispatchEventDelivery = scheduleEventDelivery;
