@@ -12,5 +12,6 @@ export * from "./runtime/events.js";
 export * from "./runtime/health.js";
 export * from "./runtime/registry.js";
 export * from "./runtime/state.js";
+export * from "./runtime/starter.js";
 export * from "./runtime/tasks.js";
 export * from "./runtime/telemetry.js";

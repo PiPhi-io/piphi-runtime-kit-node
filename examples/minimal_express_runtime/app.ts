@@ -1,17 +1,12 @@
 import express, { type Request, type Response } from "express";
 import {
-  ConfigSyncCoordinator,
-  RuntimeContext,
-  RuntimeRegistry,
-  TelemetryClient,
   buildConfigApplyResponse,
   buildConfigRemoveResponse,
   buildDiscoveryResponse,
   buildEventIngestResponse,
   buildEventListResponse,
   buildLocalEventRecord,
-  buildRuntimeDiagnosticsResponse,
-  buildRuntimeHealthResponse,
+  createRuntimeStarter,
   formatConfigApplyLog,
   normalizeDiscoveryInputs,
   scheduleTelemetryDelivery,
@@ -50,10 +45,20 @@ type DemoDeviceEntry = {
 const app = express();
 app.use(express.json());
 
-const runtime = new RuntimeContext();
-const registry = new RuntimeRegistry<DemoDeviceState, DemoDeviceEntry, Record<string, unknown>>();
-const telemetry = new TelemetryClient({ processState: runtime.processState });
-const configSync = new ConfigSyncCoordinator(runtime.processState);
+const starter = createRuntimeStarter({
+  integrationId: "minimal-express-runtime",
+  integrationName: "Minimal Express Runtime",
+  version: "0.1.2",
+});
+const runtime = starter.runtime;
+const registry = starter.registry as typeof starter.registry & {
+  set(entryId: string, entry: DemoDeviceEntry): DemoDeviceEntry;
+  get(entryId: string): DemoDeviceEntry | undefined;
+  primaryEntry(): DemoDeviceEntry | undefined;
+  updateState(entryId: string, state: DemoDeviceState): { deviceId: string; state: DemoDeviceState; lastUpdated: string };
+};
+const telemetry = starter.telemetryClient;
+const configSync = starter.configSync;
 
 function syncRuntimeAuth(req: Request): void {
   syncRuntimeAuthFromExpressRequest(runtime, req);
@@ -83,34 +88,11 @@ async function removeConfig(configId: string): Promise<boolean> {
 }
 
 app.get("/health", (_req: Request, res: Response) => {
-  res.json(
-    buildRuntimeHealthResponse(runtime, {
-      integration: {
-        id: "minimal-express-runtime",
-        name: "Minimal Express Runtime",
-        version: "0.1.2",
-      },
-      metadata: {
-        activeConfigs: registry.ids().length,
-      },
-    }),
-  );
+  res.json(starter.healthResponse());
 });
 
 app.get("/diagnostics", (_req: Request, res: Response) => {
-  res.json(
-    buildRuntimeDiagnosticsResponse(runtime, {
-      integration: {
-        id: "minimal-express-runtime",
-        name: "Minimal Express Runtime",
-        version: "0.1.2",
-      },
-      diagnostics: {
-        activeConfigIds: registry.ids(),
-        recentEventCount: registry.recentEvents.length,
-      },
-    }),
-  );
+  res.json(starter.diagnosticsResponse());
 });
 
 app.post("/discover", (req: Request, res: Response) => {
