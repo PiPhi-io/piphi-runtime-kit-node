@@ -83,17 +83,21 @@ logic of the device or API you are integrating.
 
 The package supports Node `>=18`.
 
-Install from a local checkout:
+Install from npm:
 
 ```bash
-npm install /path/to/piphi-runtime-kit-node
+npm install piphi-runtime-kit-node
 ```
 
 Or with `pnpm`:
 
 ```bash
-pnpm add /path/to/piphi-runtime-kit-node
+pnpm add piphi-runtime-kit-node
 ```
+
+Package page:
+
+- https://www.npmjs.com/package/piphi-runtime-kit-node
 
 ## The Golden Path
 

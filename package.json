@@ -2,9 +2,17 @@
   "name": "piphi-runtime-kit-node",
   "version": "0.1.2",
   "description": "PiPhi Network runtime integration helpers for Node.js",
+  "keywords": [
+    "piphi",
+    "runtime",
+    "integration",
+    "iot",
+    "node"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -24,10 +32,23 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check": "tsc --noEmit -p tsconfig.json"
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "npm run build && node --test",
+    "test:watch": "node --test --watch"
   },
   "engines": {
     "node": ">=18"
+  },
+  "homepage": "https://github.com/PiPhi-io/piphi-runtime-kit-node#readme",
+  "bugs": {
+    "url": "https://github.com/PiPhi-io/piphi-runtime-kit-node/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PiPhi-io/piphi-runtime-kit-node.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "license": "MIT",
   "author": "PiPhi Network",

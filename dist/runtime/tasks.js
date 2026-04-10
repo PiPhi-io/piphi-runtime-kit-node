@@ -3,7 +3,9 @@
  */
 export function trackBackgroundTask(processState, task) {
     processState.backgroundTasks.add(task);
-    task.finally(() => {
+    task.then(() => {
+        processState.backgroundTasks.delete(task);
+    }, () => {
         processState.backgroundTasks.delete(task);
     });
     return task;
