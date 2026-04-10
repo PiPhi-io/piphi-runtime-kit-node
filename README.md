@@ -11,6 +11,8 @@ Version `0.1.2` is the current documented baseline.
 
 > New to PiPhi? Start with [The Golden Path](#the-golden-path), then read [The IDs You Need To Understand](#the-ids-you-need-to-understand), then compare your code to the example apps.
 
+> Safety note: all IDs, UUIDs, hostnames, and tokens in this README are example values only. Never hardcode or publish real runtime credentials, internal tokens, or production container IDs in your source code or documentation.
+
 ## Quick Navigation
 
 - [Who this is for](#who-this-is-for)
