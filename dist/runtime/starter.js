@@ -69,6 +69,16 @@ export class RuntimeStarter {
                 },
         });
     }
+    entitiesResponse(entities, options) {
+        return buildRuntimeEntitiesResponse(entities, options);
+    }
+}
+export function buildRuntimeEntitiesResponse(entities, options) {
+    return {
+        entities,
+        capabilities: options?.capabilities ?? {},
+        commands: options?.commands ?? {},
+    };
 }
 export function createRuntimeStarter(options) {
     return new RuntimeStarter(options);

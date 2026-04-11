@@ -42,6 +42,33 @@ export interface IntegrationDiscoveryResponse<TDevice = Record<string, unknown>>
   devices: TDevice[];
 }
 
+export interface RuntimeEntityDashboard {
+  allowedWidgets?: string[];
+  defaultWidget?: string | null;
+  recommendedWidgets?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface RuntimeEntity {
+  id: string;
+  name: string;
+  capabilities: string[];
+  configId?: string | null;
+  deviceId?: string | null;
+  deviceType?: string | null;
+  deviceClass?: string | null;
+  entityType?: string | null;
+  dashboard?: RuntimeEntityDashboard | null;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface RuntimeEntitiesResponse<TEntity extends RuntimeEntity = RuntimeEntity> {
+  entities: TEntity[];
+  capabilities?: Record<string, unknown>;
+  commands?: Record<string, unknown>;
+}
+
 export interface IntegrationEventRequest {
   eventType: string;
   source?: string;

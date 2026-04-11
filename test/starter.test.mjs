@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RuntimeStarter, createRuntimeStarter } from "../dist/runtime/starter.js";
+import {
+  RuntimeStarter,
+  buildRuntimeEntitiesResponse,
+  createRuntimeStarter,
+} from "../dist/runtime/starter.js";
 
 test("RuntimeStarter stores integration metadata", () => {
   const starter = new RuntimeStarter({
@@ -94,6 +98,61 @@ test("RuntimeStarter.diagnosticsResponse accepts custom diagnostics", () => {
   });
   const response = starter.diagnosticsResponse({ health: "green" });
   assert.deepEqual(response.diagnostics, { health: "green" });
+});
+
+test("buildRuntimeEntitiesResponse wraps runtime entities with helper metadata", () => {
+  const response = buildRuntimeEntitiesResponse(
+    [
+      {
+        id: "office-plug",
+        name: "Office Plug",
+        capabilities: ["switch", "power"],
+        configId: "cfg-1",
+        deviceId: "office-plug",
+        deviceClass: "plug",
+      },
+    ],
+    {
+      capabilities: { switch: { kind: "action" } },
+      commands: { turn_on: { description: "Turn on" } },
+    },
+  );
+
+  assert.deepEqual(response.entities[0], {
+    id: "office-plug",
+    name: "Office Plug",
+    capabilities: ["switch", "power"],
+    configId: "cfg-1",
+    deviceId: "office-plug",
+    deviceClass: "plug",
+  });
+  assert.deepEqual(response.capabilities, { switch: { kind: "action" } });
+  assert.deepEqual(response.commands, { turn_on: { description: "Turn on" } });
+});
+
+test("RuntimeStarter.entitiesResponse delegates to the runtime entities helper", () => {
+  const starter = new RuntimeStarter({
+    integrationId: "integration-10",
+    integrationName: "Integration Ten",
+  });
+
+  const response = starter.entitiesResponse(
+    [
+      {
+        id: "hallway-sensor",
+        name: "Hallway Sensor",
+        capabilities: ["temperature"],
+        configId: "cfg-10",
+      },
+    ],
+    {
+      capabilities: { temperature: { kind: "sensor" } },
+    },
+  );
+
+  assert.deepEqual(response.entities[0].name, "Hallway Sensor");
+  assert.deepEqual(response.capabilities, { temperature: { kind: "sensor" } });
+  assert.deepEqual(response.commands, {});
 });
 
 test("createRuntimeStarter returns a RuntimeStarter instance", () => {

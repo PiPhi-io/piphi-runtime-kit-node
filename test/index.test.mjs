@@ -10,6 +10,7 @@ for (const exportName of [
   "RuntimeStarter",
   "ConfigSyncCoordinator",
   "RuntimeRegistry",
+  "buildRuntimeEntitiesResponse",
   "buildRuntimeHealthResponse",
   "syncRuntimeAuthFromExpressRequest",
   "syncRuntimeAuthFromFastifyRequest",

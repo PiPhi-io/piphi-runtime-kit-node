@@ -4,6 +4,7 @@ import { EventClient } from "./events.js";
 import { buildRuntimeDiagnosticsResponse, buildRuntimeHealthResponse } from "./health.js";
 import { RuntimeRegistry } from "./registry.js";
 import { TelemetryClient } from "./telemetry.js";
+import type { RuntimeEntitiesResponse, RuntimeEntity } from "../types.js";
 
 export interface RuntimeStarterOptions {
   integrationId: string;
@@ -93,6 +94,30 @@ export class RuntimeStarter {
         },
     });
   }
+
+  entitiesResponse<T extends RuntimeEntity>(
+    entities: T[],
+    options?: {
+      capabilities?: Record<string, unknown>;
+      commands?: Record<string, unknown>;
+    },
+  ): RuntimeEntitiesResponse<T> {
+    return buildRuntimeEntitiesResponse(entities, options);
+  }
+}
+
+export function buildRuntimeEntitiesResponse<T extends RuntimeEntity>(
+  entities: T[],
+  options?: {
+    capabilities?: Record<string, unknown>;
+    commands?: Record<string, unknown>;
+  },
+): RuntimeEntitiesResponse<T> {
+  return {
+    entities,
+    capabilities: options?.capabilities ?? {},
+    commands: options?.commands ?? {},
+  };
 }
 
 export function createRuntimeStarter(options: RuntimeStarterOptions): RuntimeStarter {

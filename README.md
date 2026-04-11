@@ -244,6 +244,65 @@ Most runtimes should provide at least:
 
 Some integrations also provide `/ui` or `/ui-config`.
 
+### 6.1 Model `/entities` with real device context
+
+For smart-home integrations, `/entities` should describe the actual configured devices rather than a single generic manifest entity. That gives PiPhi enough context to suggest the right dashboard cards for a plug vs a bulb vs a thermostat.
+
+For simpler integrations, a short generic list is still fine. The richer shape
+is mainly for runtimes where entity identity and device type meaningfully affect
+dashboard behavior or user expectations.
+
+Recommended fields:
+
+- `id`: stable runtime entity id
+- `name`: user-facing label
+- `capabilities`: actual capabilities for that device
+- `configId`: PiPhi config UUID when available
+- `deviceId`: integration-native device id
+- `deviceType` / `deviceClass`: values like `plug`, `bulb`, `sensor`, `climate`
+- `entityType`: values like `switch`, `light`, `sensor`, `media`
+- `dashboard.allowedWidgets`, `dashboard.defaultWidget`, `dashboard.recommendedWidgets`: optional UI hints
+
+The SDK now exports `RuntimeEntity`, `RuntimeEntitiesResponse`,
+`buildRuntimeEntitiesResponse(...)`, and `starter.entitiesResponse(...)` so you
+can return the same shape consistently.
+
+The helper returns the standard wrapper shape:
+
+- `entities`: the runtime-owned list you generated
+- `capabilities`: optional manifest capability metadata
+- `commands`: optional manifest command metadata
+
+```ts
+import { buildRuntimeEntitiesResponse } from "piphi-runtime-kit-node";
+
+app.get("/entities", (_req, res) => {
+  res.json(
+    buildRuntimeEntitiesResponse(
+      [
+        {
+          id: "office-plug",
+          name: "Office Plug",
+          configId: "core-config-uuid",
+          deviceId: "office-plug",
+          deviceClass: "plug",
+          entityType: "switch",
+          capabilities: ["switch", "power", "energy_today"],
+          dashboard: {
+            allowedWidgets: ["tile", "button", "stat"],
+            defaultWidget: "tile",
+          },
+        },
+      ],
+      { capabilities: manifest.capabilities, commands: manifest.commands },
+    ),
+  );
+});
+```
+
+If you are already using `createRuntimeStarter(...)`, you can also return the
+same shape with `starter.entitiesResponse(...)`.
+
 ### 7. Compare against the example app
 
 The example apps are the intended reference implementations:
