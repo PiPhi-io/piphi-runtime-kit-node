@@ -107,7 +107,7 @@ test("scheduleEventDelivery uses configId when present", async () => {
   assert.equal(received.event.configId, "cfg-10");
 });
 
-test("scheduleEventDelivery falls back configId to deviceId", async () => {
+test("scheduleEventDelivery leaves configId empty when config scope is missing", async () => {
   const processState = new RuntimeProcessState();
   let received;
   const eventClient = {
@@ -126,7 +126,7 @@ test("scheduleEventDelivery falls back configId to deviceId", async () => {
       integrationId: "integration-11",
     },
   });
-  assert.equal(received.event.configId, "device-11");
+  assert.equal(received.event.configId, "");
 });
 
 test("scheduleEventDelivery uses an empty configId when neither id is present", async () => {

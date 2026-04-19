@@ -44,9 +44,15 @@ export class RuntimeRegistry<
     return this.entries.values().next().value as TEntry | undefined;
   }
 
-  updateState(entryId: string, state: TState): { deviceId: string; state: TState; lastUpdated: string } {
+  updateState(
+    entryId: string,
+    state: TState,
+    deviceId?: string,
+  ): { deviceId: string; state: TState; lastUpdated: string } {
     const lastUpdated = new Date().toISOString();
-    const snapshot = { deviceId: entryId, state, lastUpdated };
+    const resolvedDeviceId =
+      deviceId ?? String((this.entries.get(entryId) as { deviceId?: string } | undefined)?.deviceId ?? entryId);
+    const snapshot = { deviceId: resolvedDeviceId, state, lastUpdated };
     this.stateSnapshots.set(entryId, snapshot);
 
     const entry = this.entries.get(entryId);

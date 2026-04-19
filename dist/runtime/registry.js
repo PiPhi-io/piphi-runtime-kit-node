@@ -25,9 +25,10 @@ export class RuntimeRegistry {
     primaryEntry() {
         return this.entries.values().next().value;
     }
-    updateState(entryId, state) {
+    updateState(entryId, state, deviceId) {
         const lastUpdated = new Date().toISOString();
-        const snapshot = { deviceId: entryId, state, lastUpdated };
+        const resolvedDeviceId = deviceId ?? String(this.entries.get(entryId)?.deviceId ?? entryId);
+        const snapshot = { deviceId: resolvedDeviceId, state, lastUpdated };
         this.stateSnapshots.set(entryId, snapshot);
         const entry = this.entries.get(entryId);
         if (entry) {

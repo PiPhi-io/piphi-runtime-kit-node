@@ -176,10 +176,10 @@ syncRuntimeAuthFromFastifyRequest(starter.runtime, request, payload.containerId)
 Use the registry for the runtime working set:
 
 ```ts
+const identity = buildRuntimeIdentity(payload, { integrationId: "demo-runtime" });
+
 registry.set(payload.id, {
-  deviceId: payload.id,
-  configId: payload.configId ?? payload.id,
-  integrationId: payload.integrationId ?? "demo-runtime",
+  ...identity,
   host: payload.host,
 });
 ```

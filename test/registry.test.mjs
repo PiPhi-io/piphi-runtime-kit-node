@@ -66,6 +66,14 @@ test("RuntimeRegistry.updateState stores a snapshot", () => {
   assert.equal(registry.stateSnapshots.get("entry-4")?.deviceId, "entry-4");
 });
 
+test("RuntimeRegistry.updateState uses the entry deviceId when present", () => {
+  const registry = new RuntimeRegistry();
+  registry.set("cfg-1", { deviceId: "sensor-1" });
+  const snapshot = registry.updateState("cfg-1", { ppm: 18 });
+  assert.equal(snapshot.deviceId, "sensor-1");
+  assert.equal(registry.stateSnapshots.get("cfg-1")?.deviceId, "sensor-1");
+});
+
 test("RuntimeRegistry.updateState updates matching entry metadata", () => {
   const registry = new RuntimeRegistry();
   const entry = {};

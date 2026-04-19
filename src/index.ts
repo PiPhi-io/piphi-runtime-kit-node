@@ -10,6 +10,7 @@ export * from "./runtime/dispatch.js";
 export * from "./runtime/errors.js";
 export * from "./runtime/events.js";
 export * from "./runtime/health.js";
+export * from "./runtime/identity.js";
 export * from "./runtime/registry.js";
 export * from "./runtime/state.js";
 export * from "./runtime/starter.js";

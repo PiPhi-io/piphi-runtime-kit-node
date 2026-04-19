@@ -20,7 +20,7 @@ export declare class RuntimeRegistry<TState extends object = Record<string, unkn
     remove(entryId: string): TEntry | undefined;
     ids(): string[];
     primaryEntry(): TEntry | undefined;
-    updateState(entryId: string, state: TState): {
+    updateState(entryId: string, state: TState, deviceId?: string): {
         deviceId: string;
         state: TState;
         lastUpdated: string;

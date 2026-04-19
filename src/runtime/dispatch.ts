@@ -3,6 +3,7 @@ import { RuntimeProcessState } from "./state.js";
 import { createTrackedTask } from "./tasks.js";
 import { EventClient, buildCoreEventPayload } from "./events.js";
 import { TelemetryClient } from "./telemetry.js";
+import { resolveConfigId } from "./identity.js";
 
 /**
  * Build a local event record before persisting or returning it.
@@ -68,7 +69,8 @@ export function scheduleEventDelivery(options: {
     eventType: options.eventType,
     ...(options.source ? { source: options.source } : {}),
     ...(options.payload ? { payload: options.payload } : {}),
-    configId: String(options.device.configId ?? options.device.deviceId ?? ""),
+    configId:
+      "configId" in options.device ? resolveConfigId(options.device as Record<string, unknown>) : "",
     containerId: String(options.device.containerId ?? options.authContext.containerId ?? ""),
     integrationId: String(options.device.integrationId ?? ""),
     ...(options.device.deviceId ? { deviceId: String(options.device.deviceId) } : {}),

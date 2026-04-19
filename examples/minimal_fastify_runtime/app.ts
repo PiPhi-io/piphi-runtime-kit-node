@@ -5,6 +5,7 @@ import {
   buildEventIngestResponse,
   buildEventListResponse,
   buildLocalEventRecord,
+  buildRuntimeIdentity,
   createRuntimeStarter,
   formatConfigApplyLog,
   normalizeDiscoveryInputs,
@@ -81,11 +82,9 @@ function syncRuntimeAuth(request: FastifyRequestLike): void {
 }
 
 function buildEntry(config: DemoDeviceConfig): DemoDeviceEntry {
+  const identity = buildRuntimeIdentity(config, { integrationId });
   return {
-    configId: config.configId ?? config.id,
-    deviceId: config.deviceId ?? config.id,
-    containerId: config.containerId,
-    integrationId: config.integrationId ?? integrationId,
+    ...identity,
     host: config.host,
     alias: config.alias,
     config,
@@ -118,7 +117,7 @@ async function applyConfig(config: DemoDeviceConfig): Promise<void> {
     connected: true,
     host: config.host,
     alias: config.alias,
-  });
+  }, entry.deviceId);
 
   appendRuntimeEvent("demo.config.applied", entry, {
     host: config.host,
