@@ -66,6 +66,7 @@ test("buildRuntimeHealthResponse includes default support fields", () => {
     coreClientBound: false,
     pendingTaskCount: 0,
     currentGeneration: null,
+    configGeneration: null,
   });
 });
 
@@ -111,5 +112,6 @@ test("buildRuntimeDiagnosticsResponse defaults fields the same way as health", (
     coreClientBound: false,
     pendingTaskCount: 0,
     currentGeneration: null,
+    configGeneration: null,
   });
 });

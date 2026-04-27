@@ -20,10 +20,17 @@ export interface RuntimeConfigRemoveResponse {
 }
 
 export interface RuntimeConfigSnapshot<TConfig = RuntimeConfig> {
+  schemaVersion?: number | null;
   containerId?: string | null;
   integrationId?: string | null;
+  driverPid?: number | null;
+  reason?: string | null;
   generation?: number | null;
+  updatedAt?: string | null;
   configs: TConfig[];
+  deletedConfigIds?: string[];
+  configHash?: string | null;
+  internalToken?: string | null;
 }
 
 export interface RuntimeConfigSyncResponse {
@@ -96,6 +103,7 @@ export interface RuntimeHealthResponse {
   coreClientBound: boolean;
   pendingTaskCount: number;
   currentGeneration?: number | null;
+  configGeneration?: number | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -106,6 +114,7 @@ export interface RuntimeDiagnosticsResponse {
   coreClientBound: boolean;
   pendingTaskCount: number;
   currentGeneration?: number | null;
+  configGeneration?: number | null;
   diagnostics?: Record<string, unknown>;
 }
 

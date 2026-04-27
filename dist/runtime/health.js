@@ -8,6 +8,7 @@ export function buildRuntimeHealthResponse(runtime, options) {
         coreClientBound: Boolean(runtime.processState.coreFetch),
         pendingTaskCount: runtime.processState.backgroundTasks.size,
         currentGeneration: runtime.processState.currentGeneration,
+        configGeneration: runtime.processState.currentGeneration,
         ...(options?.integration ? { integration: options.integration } : {}),
         ...(options?.metadata ? { metadata: options.metadata } : {}),
     };
@@ -22,6 +23,7 @@ export function buildRuntimeDiagnosticsResponse(runtime, options) {
         coreClientBound: Boolean(runtime.processState.coreFetch),
         pendingTaskCount: runtime.processState.backgroundTasks.size,
         currentGeneration: runtime.processState.currentGeneration,
+        configGeneration: runtime.processState.currentGeneration,
         ...(options?.integration ? { integration: options.integration } : {}),
         ...(options?.diagnostics ? { diagnostics: options.diagnostics } : {}),
     };

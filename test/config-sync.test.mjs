@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
   ConfigSyncCoordinator,
   buildSyncResponse,
+  loadRuntimeConfigSnapshot,
+  resolveCoreBaseUrl,
+  resolveRuntimeConfigSnapshotPath,
   reconcileConfigIds,
 } from "../dist/runtime/config-sync.js";
 import { RuntimeProcessState } from "../dist/runtime/state.js";
@@ -45,6 +51,73 @@ test("buildSyncResponse preserves provided values", () => {
       generation: 7,
     },
   );
+});
+
+test("resolveCoreBaseUrl uses managed runtime environment", () => {
+  assert.equal(
+    resolveCoreBaseUrl({ env: { PIPHI_CORE_BASE_URL: "http://127.0.0.1:31419/" } }),
+    "http://127.0.0.1:31419",
+  );
+});
+
+test("resolveRuntimeConfigSnapshotPath uses explicit path or container id", () => {
+  assert.equal(
+    resolveRuntimeConfigSnapshotPath({
+      env: { PIPHI_CONFIG_SNAPSHOT_PATH: "/tmp/runtime-config.json" },
+      volumeDir: "/ignored",
+    }),
+    "/tmp/runtime-config.json",
+  );
+  assert.equal(
+    resolveRuntimeConfigSnapshotPath({
+      env: { PIPHI_CONTAINER_ID: "container-1" },
+      volumeDir: "/.piphinetwork",
+    }),
+    "/.piphinetwork/container-1.json",
+  );
+});
+
+test("loadRuntimeConfigSnapshot reads Core volume contract", () => {
+  const dir = mkdtempSync(join(tmpdir(), "piphi-runtime-"));
+  const path = join(dir, "container-1.json");
+  writeFileSync(
+    path,
+    JSON.stringify({
+      schema_version: 1,
+      container_id: "container-1",
+      integration_id: "integration-1",
+      driver_pid: 123,
+      reason: "startup",
+      generation: 42,
+      updated_at: "2026-04-27T12:00:00+00:00",
+      configs: [{ id: "device-1", serial: "abc123" }],
+      deleted_config_ids: ["device-2"],
+      config_hash: "sha256:abc",
+      internal_token: "runtime-token",
+    }),
+    "utf-8",
+  );
+
+  const snapshot = loadRuntimeConfigSnapshot({ path });
+
+  assert.equal(snapshot.schemaVersion, 1);
+  assert.equal(snapshot.containerId, "container-1");
+  assert.equal(snapshot.integrationId, "integration-1");
+  assert.equal(snapshot.driverPid, 123);
+  assert.equal(snapshot.generation, 42);
+  assert.deepEqual(snapshot.deletedConfigIds, ["device-2"]);
+  assert.equal(snapshot.configHash, "sha256:abc");
+  assert.equal(snapshot.internalToken, "runtime-token");
+  assert.deepEqual(snapshot.configs, [{ id: "device-1", serial: "abc123" }]);
+});
+
+test("loadRuntimeConfigSnapshot returns null for missing or invalid snapshots", () => {
+  const dir = mkdtempSync(join(tmpdir(), "piphi-runtime-"));
+  const path = join(dir, "invalid.json");
+  writeFileSync(path, "not-json", "utf-8");
+
+  assert.equal(loadRuntimeConfigSnapshot({ path: join(dir, "missing.json") }), null);
+  assert.equal(loadRuntimeConfigSnapshot({ path }), null);
 });
 
 test("ConfigSyncCoordinator.applySnapshot applies configs and removes stale ones", async () => {
