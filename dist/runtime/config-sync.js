@@ -1,10 +1,42 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { buildRuntimeAuthHeaders } from "./auth.js";
 export const CORE_BASE_URL_ENV_NAME = "PIPHI_CORE_BASE_URL";
 export const RUNTIME_CONTAINER_ID_ENV_NAME = "PIPHI_CONTAINER_ID";
 export const RUNTIME_CONFIG_SNAPSHOT_PATH_ENV_NAME = "PIPHI_CONFIG_SNAPSHOT_PATH";
 export const DEFAULT_RUNTIME_VOLUME_DIR = "/.piphinetwork";
 export const DEFAULT_RUNTIME_CONFIG_SNAPSHOT_FILENAME = "configs.json";
+export const CORE_RUNTIME_CONFIG_FETCH_PATH = "/api/v2/integrations/config/fetch/all/by/container/internal";
+function emptyRehydrateResult() {
+    return {
+        snapshotFound: false,
+        snapshotApplied: false,
+        snapshotConfigCount: 0,
+        snapshotGeneration: null,
+        coreAttempted: false,
+        coreApplied: false,
+        coreConfigCount: 0,
+        coreGeneration: null,
+        coreError: null,
+        missingRuntimeAuth: false,
+    };
+}
+function normalizeError(error) {
+    if (error instanceof Error) {
+        return `${error.name}: ${error.message}`;
+    }
+    return String(error);
+}
+function defaultMapConfig(config) {
+    return config;
+}
+function mapSnapshotConfigs(snapshot, mapConfig, reason) {
+    return {
+        ...snapshot,
+        reason: snapshot.reason ?? reason,
+        configs: snapshot.configs.map((config) => mapConfig(config)),
+    };
+}
 function getString(payload, ...keys) {
     for (const key of keys) {
         const value = payload[key];
@@ -96,6 +128,139 @@ export function loadRuntimeConfigSnapshot(options = {}) {
     }
     catch {
         return null;
+    }
+}
+export function buildRuntimeConfigSnapshotFromCoreRows(rows, options) {
+    const mapConfig = options.mapConfig ?? (defaultMapConfig);
+    const configs = rows.flatMap((row) => {
+        if (!row || typeof row !== "object" || Array.isArray(row)) {
+            return [];
+        }
+        const configData = row.config_data;
+        if (!configData || typeof configData !== "object" || Array.isArray(configData)) {
+            return [];
+        }
+        return [
+            mapConfig({
+                ...configData,
+                containerId: configData.containerId
+                    ?? configData.container_id
+                    ?? options.containerId,
+            }),
+        ];
+    });
+    return {
+        containerId: options.containerId,
+        reason: options.reason ?? "startup_rehydrate",
+        configs,
+    };
+}
+export async function fetchCoreRuntimeConfigSnapshot(options) {
+    const { containerId, internalToken } = options.runtimeContext.auth.resolve();
+    if (!containerId || !internalToken) {
+        return null;
+    }
+    const coreBaseUrl = resolveCoreBaseUrl({
+        defaultValue: options.coreBaseUrl ?? "http://127.0.0.1:31419",
+    });
+    if (!coreBaseUrl) {
+        return null;
+    }
+    const coreFetch = options.coreFetch ?? fetch;
+    const controller = options.timeoutMs ? new AbortController() : null;
+    const timeout = controller
+        ? setTimeout(() => controller.abort(), options.timeoutMs)
+        : null;
+    try {
+        const url = new URL(`${coreBaseUrl}${CORE_RUNTIME_CONFIG_FETCH_PATH}`);
+        url.searchParams.set("container_id", containerId);
+        const requestInit = {
+            headers: buildRuntimeAuthHeaders({ containerId, internalToken }),
+        };
+        if (controller) {
+            requestInit.signal = controller.signal;
+        }
+        const response = await coreFetch(url, requestInit);
+        if (!response.ok) {
+            throw new Error(`Core runtime config fetch failed with HTTP ${response.status}`);
+        }
+        const rows = await response.json();
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return null;
+        }
+        const buildOptions = { containerId };
+        if (options.mapConfig) {
+            buildOptions.mapConfig = options.mapConfig;
+        }
+        if (options.reason) {
+            buildOptions.reason = options.reason;
+        }
+        return buildRuntimeConfigSnapshotFromCoreRows(rows, buildOptions);
+    }
+    finally {
+        if (timeout) {
+            clearTimeout(timeout);
+        }
+    }
+}
+export async function rehydrateRuntimeConfigs(options) {
+    const result = emptyRehydrateResult();
+    const mapConfig = options.mapConfig ?? (defaultMapConfig);
+    const loadOptions = {
+        containerId: options.runtimeContext.auth.containerId,
+    };
+    if (options.snapshotPath) {
+        loadOptions.path = options.snapshotPath;
+    }
+    if (options.snapshotVolumeDir) {
+        loadOptions.volumeDir = options.snapshotVolumeDir;
+    }
+    const snapshot = loadRuntimeConfigSnapshot(loadOptions);
+    if (snapshot) {
+        result.snapshotFound = true;
+        const mappedSnapshot = mapSnapshotConfigs(snapshot, mapConfig, options.snapshotReason ?? "startup_snapshot_rehydrate");
+        await options.applySnapshot(mappedSnapshot);
+        result.snapshotApplied = true;
+        result.snapshotConfigCount = mappedSnapshot.configs.length;
+        result.snapshotGeneration = mappedSnapshot.generation ?? null;
+    }
+    const { containerId, internalToken } = options.runtimeContext.auth.resolve();
+    if (!containerId || !internalToken) {
+        result.missingRuntimeAuth = true;
+        return result;
+    }
+    result.coreAttempted = true;
+    try {
+        const fetchOptions = {
+            runtimeContext: options.runtimeContext,
+            mapConfig,
+            reason: options.coreReason ?? "startup_rehydrate",
+        };
+        if (options.coreFetch) {
+            fetchOptions.coreFetch = options.coreFetch;
+        }
+        if (options.coreBaseUrl !== undefined) {
+            fetchOptions.coreBaseUrl = options.coreBaseUrl;
+        }
+        if (options.timeoutMs !== undefined) {
+            fetchOptions.timeoutMs = options.timeoutMs;
+        }
+        const coreSnapshot = await fetchCoreRuntimeConfigSnapshot(fetchOptions);
+        if (!coreSnapshot) {
+            return result;
+        }
+        await options.applySnapshot(coreSnapshot);
+        result.coreApplied = true;
+        result.coreConfigCount = coreSnapshot.configs.length;
+        result.coreGeneration = coreSnapshot.generation ?? null;
+        return result;
+    }
+    catch (error) {
+        result.coreError = normalizeError(error);
+        if (options.raiseCoreErrors) {
+            throw error;
+        }
+        return result;
     }
 }
 /**

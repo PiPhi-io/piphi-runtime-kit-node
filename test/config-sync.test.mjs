@@ -6,12 +6,16 @@ import test from "node:test";
 
 import {
   ConfigSyncCoordinator,
+  buildRuntimeConfigSnapshotFromCoreRows,
   buildSyncResponse,
+  fetchCoreRuntimeConfigSnapshot,
   loadRuntimeConfigSnapshot,
+  rehydrateRuntimeConfigs,
   resolveCoreBaseUrl,
   resolveRuntimeConfigSnapshotPath,
   reconcileConfigIds,
 } from "../dist/runtime/config-sync.js";
+import { RuntimeContext } from "../dist/runtime/context.js";
 import { RuntimeProcessState } from "../dist/runtime/state.js";
 
 for (const [label, incoming, active, expected] of [
@@ -118,6 +122,122 @@ test("loadRuntimeConfigSnapshot returns null for missing or invalid snapshots", 
 
   assert.equal(loadRuntimeConfigSnapshot({ path: join(dir, "missing.json") }), null);
   assert.equal(loadRuntimeConfigSnapshot({ path }), null);
+});
+
+test("buildRuntimeConfigSnapshotFromCoreRows converts Core rows into a snapshot", () => {
+  const snapshot = buildRuntimeConfigSnapshotFromCoreRows(
+    [
+      { config_data: { id: "device-1", label: "Kitchen" } },
+      { config_data: null },
+      { not_config_data: { id: "ignored" } },
+    ],
+    { containerId: "container-1" },
+  );
+
+  assert.equal(snapshot.containerId, "container-1");
+  assert.equal(snapshot.reason, "startup_rehydrate");
+  assert.deepEqual(snapshot.configs, [
+    { id: "device-1", label: "Kitchen", containerId: "container-1" },
+  ]);
+});
+
+test("fetchCoreRuntimeConfigSnapshot uses runtime auth headers", async () => {
+  const runtime = new RuntimeContext();
+  runtime.auth.update({ containerId: "container-1", internalToken: "secret-token" });
+  const requests = [];
+  const coreFetch = async (url, init) => {
+    requests.push({ url: String(url), init });
+    return new Response(
+      JSON.stringify([{ config_data: { id: "device-1", label: "Kitchen" } }]),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+
+  const snapshot = await fetchCoreRuntimeConfigSnapshot({
+    runtimeContext: runtime,
+    coreFetch,
+    coreBaseUrl: "http://core.local",
+  });
+
+  assert.equal(snapshot.configs[0].id, "device-1");
+  assert.equal(
+    requests[0].url,
+    "http://core.local/api/v2/integrations/config/fetch/all/by/container/internal?container_id=container-1",
+  );
+  assert.equal(requests[0].init.headers["x-container-id"], "container-1");
+  assert.equal(requests[0].init.headers["x-piphi-integration-token"], "secret-token");
+});
+
+test("rehydrateRuntimeConfigs applies snapshot then live Core config", async () => {
+  const runtime = new RuntimeContext();
+  runtime.auth.update({ containerId: "container-1", internalToken: "secret-token" });
+  const dir = mkdtempSync(join(tmpdir(), "piphi-runtime-"));
+  const path = join(dir, "container-1.json");
+  writeFileSync(
+    path,
+    JSON.stringify({
+      container_id: "container-1",
+      reason: "startup_snapshot",
+      generation: 1,
+      configs: [{ id: "snapshot-device" }],
+    }),
+    "utf-8",
+  );
+  const applied = [];
+  const coreFetch = async () => new Response(
+    JSON.stringify([{ config_data: { id: "core-device" } }]),
+    { status: 200, headers: { "content-type": "application/json" } },
+  );
+
+  const result = await rehydrateRuntimeConfigs({
+    runtimeContext: runtime,
+    coreFetch,
+    coreBaseUrl: "http://core.local",
+    snapshotPath: path,
+    applySnapshot: async (snapshot) => {
+      applied.push([snapshot.reason, snapshot.configs.map((config) => config.id)]);
+    },
+  });
+
+  assert.equal(result.snapshotApplied, true);
+  assert.equal(result.coreApplied, true);
+  assert.deepEqual(applied, [
+    ["startup_snapshot", ["snapshot-device"]],
+    ["startup_rehydrate", ["core-device"]],
+  ]);
+});
+
+test("rehydrateRuntimeConfigs keeps snapshot when Core is offline", async () => {
+  const runtime = new RuntimeContext();
+  runtime.auth.update({ containerId: "container-1", internalToken: "secret-token" });
+  const dir = mkdtempSync(join(tmpdir(), "piphi-runtime-"));
+  const path = join(dir, "container-1.json");
+  writeFileSync(
+    path,
+    JSON.stringify({
+      container_id: "container-1",
+      configs: [{ id: "snapshot-device" }],
+    }),
+    "utf-8",
+  );
+  const applied = [];
+
+  const result = await rehydrateRuntimeConfigs({
+    runtimeContext: runtime,
+    coreFetch: async () => {
+      throw new Error("offline");
+    },
+    snapshotPath: path,
+    applySnapshot: async (snapshot) => {
+      applied.push(...snapshot.configs.map((config) => config.id));
+    },
+  });
+
+  assert.equal(result.snapshotApplied, true);
+  assert.equal(result.coreAttempted, true);
+  assert.equal(result.coreApplied, false);
+  assert.match(result.coreError, /offline/);
+  assert.deepEqual(applied, ["snapshot-device"]);
 });
 
 test("ConfigSyncCoordinator.applySnapshot applies configs and removes stale ones", async () => {
