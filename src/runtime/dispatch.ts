@@ -23,6 +23,7 @@ export function scheduleTelemetryDelivery(options: {
   telemetryClient: TelemetryClient;
   authContext: RuntimeAuthContext;
   deviceId: string;
+  configId?: string | null;
   metrics: Record<string, unknown>;
   units?: Record<string, string>;
   containerId?: string | null;
@@ -30,6 +31,7 @@ export function scheduleTelemetryDelivery(options: {
   const telemetryOptions: {
     authContext: RuntimeAuthContext;
     deviceId: string;
+    configId?: string | null;
     metrics: Record<string, unknown>;
     units?: Record<string, string>;
     containerId?: string | null;
@@ -41,6 +43,10 @@ export function scheduleTelemetryDelivery(options: {
 
   if (options.units !== undefined) {
     telemetryOptions.units = options.units;
+  }
+
+  if (options.configId !== undefined) {
+    telemetryOptions.configId = options.configId;
   }
 
   if (options.containerId !== undefined) {

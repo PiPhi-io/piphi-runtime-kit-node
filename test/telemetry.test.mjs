@@ -145,6 +145,23 @@ test("TelemetryClient includes integrationId when explicitly provided", async ()
   assert.equal(body.integrationId, "integration-7");
 });
 
+test("TelemetryClient includes configId when explicitly provided", async () => {
+  const state = new RuntimeProcessState();
+  let body;
+  state.setCoreFetch(async (_url, init) => {
+    body = JSON.parse(init.body);
+    return new Response(null, { status: 200 });
+  });
+  const client = new TelemetryClient({ processState: state });
+  await client.sendMetrics({
+    authContext: new RuntimeAuthContext(),
+    deviceId: "device-7b",
+    configId: "config-7b",
+    metrics: { occupancy: true },
+  });
+  assert.equal(body.configId, "config-7b");
+});
+
 test("TelemetryClient uses processState.coreFetch before global fetch", async () => {
   const state = new RuntimeProcessState();
   let localUsed = false;

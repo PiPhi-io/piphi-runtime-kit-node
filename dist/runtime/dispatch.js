@@ -22,6 +22,9 @@ export function scheduleTelemetryDelivery(options) {
     if (options.units !== undefined) {
         telemetryOptions.units = options.units;
     }
+    if (options.configId !== undefined) {
+        telemetryOptions.configId = options.configId;
+    }
     if (options.containerId !== undefined) {
         telemetryOptions.containerId = options.containerId;
     }

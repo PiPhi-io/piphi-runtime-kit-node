@@ -33,6 +33,7 @@ export class TelemetryClient {
         const telemetryUrl = `${this.coreBaseUrl}${this.telemetryPath}`;
         const payload = {
             deviceId: options.deviceId,
+            ...(options.configId !== undefined ? { configId: options.configId } : {}),
             metrics: options.metrics,
             ...(options.units ? { units: options.units } : {}),
             ...(options.containerId !== undefined || options.authContext.containerId !== null

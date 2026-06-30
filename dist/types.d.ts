@@ -105,6 +105,7 @@ export interface RuntimeDiagnosticsResponse {
 }
 export interface TelemetryPayload {
     deviceId: string;
+    configId?: string | null;
     metrics: Record<string, unknown>;
     units?: Record<string, string>;
     containerId?: string | null;

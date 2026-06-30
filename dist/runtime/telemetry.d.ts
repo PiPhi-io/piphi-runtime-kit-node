@@ -24,6 +24,7 @@ export declare class TelemetryClient {
     sendMetrics(options: {
         authContext: RuntimeAuthContext;
         deviceId: string;
+        configId?: string | null;
         metrics: Record<string, unknown>;
         units?: Record<string, string>;
         containerId?: string | null;

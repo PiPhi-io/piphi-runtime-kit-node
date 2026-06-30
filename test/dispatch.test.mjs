@@ -43,7 +43,7 @@ test("scheduleTelemetryDelivery passes required fields to the telemetry client",
   assert.deepEqual(received.metrics, { humidity: 44 });
 });
 
-test("scheduleTelemetryDelivery forwards optional units and containerId", async () => {
+test("scheduleTelemetryDelivery forwards optional units, configId, and containerId", async () => {
   const processState = new RuntimeProcessState();
   let received;
   const telemetryClient = {
@@ -58,9 +58,11 @@ test("scheduleTelemetryDelivery forwards optional units and containerId", async 
     deviceId: "device-2",
     metrics: { temperature: 21.2 },
     units: { temperature: "C" },
+    configId: "config-2",
     containerId: "container-2",
   });
   assert.deepEqual(received.units, { temperature: "C" });
+  assert.equal(received.configId, "config-2");
   assert.equal(received.containerId, "container-2");
 });
 

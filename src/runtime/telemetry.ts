@@ -44,6 +44,7 @@ export class TelemetryClient {
   async sendMetrics(options: {
     authContext: RuntimeAuthContext;
     deviceId: string;
+    configId?: string | null;
     metrics: Record<string, unknown>;
     units?: Record<string, string>;
     containerId?: string | null;
@@ -56,6 +57,7 @@ export class TelemetryClient {
 
     const payload: TelemetryPayload = {
       deviceId: options.deviceId,
+      ...(options.configId !== undefined ? { configId: options.configId } : {}),
       metrics: options.metrics,
       ...(options.units ? { units: options.units } : {}),
       ...(options.containerId !== undefined || options.authContext.containerId !== null

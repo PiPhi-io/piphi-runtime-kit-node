@@ -14,6 +14,7 @@ export declare function scheduleTelemetryDelivery(options: {
     telemetryClient: TelemetryClient;
     authContext: RuntimeAuthContext;
     deviceId: string;
+    configId?: string | null;
     metrics: Record<string, unknown>;
     units?: Record<string, string>;
     containerId?: string | null;
