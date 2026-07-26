@@ -189,6 +189,31 @@ active in-memory view inside the runtime.
 
 ### 5. Send telemetry and events
 
+Prefer the device-scoped APIs for automation-ready integrations. They validate
+Core's config identity before delivery and ensure retries represent one stable
+observation or occurrence:
+
+```ts
+const device = RuntimeDeviceRef.fromValue(registryEntry).requireEventScope();
+
+await telemetry.sendDeviceReadings({
+  authContext: runtime.auth,
+  device,
+  readings: [{ metric: "temperature_c", value: 21.4, unit: "C" }],
+});
+
+await events.sendDeviceEvent({
+  authContext: runtime.auth,
+  device,
+  eventType: "button.pressed",
+  payload: { button: 1 },
+});
+```
+
+Telemetry drives durable capability state and aggregated
+`device.state_changed` automation evaluation. Use explicit events only for
+semantic occurrences such as button presses, alarms, and completed cycles.
+
 You can send telemetry directly:
 
 ```ts

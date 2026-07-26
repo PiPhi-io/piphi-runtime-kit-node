@@ -1,5 +1,28 @@
 import { buildRuntimeAuthHeaders } from "./auth.js";
 import { classifyCoreDeliveryError } from "./errors.js";
+import { RuntimeDeviceRef } from "./identity.js";
+export function buildTelemetryMaps(readings) {
+    const metrics = {};
+    const units = {};
+    for (const reading of readings) {
+        const metric = String(reading.metric ?? "").trim();
+        if (!metric)
+            throw new TypeError("TelemetryReading.metric cannot be empty");
+        if (Object.hasOwn(metrics, metric)) {
+            throw new TypeError(`Duplicate telemetry metric: ${metric}`);
+        }
+        if (!["boolean", "number", "string"].includes(typeof reading.value)) {
+            throw new TypeError("TelemetryReading.value must be boolean, number, or string");
+        }
+        metrics[metric] = reading.value;
+        if (reading.unit)
+            units[metric] = reading.unit;
+    }
+    if (Object.keys(metrics).length === 0) {
+        throw new TypeError("At least one TelemetryReading is required");
+    }
+    return { metrics, units };
+}
 function normalizeCoreBaseUrl(baseUrl) {
     return baseUrl.replace(/\/+$/, "").replace(/\/api\/v2$/, "");
 }
@@ -35,6 +58,7 @@ export class TelemetryClient {
             deviceId: options.deviceId,
             ...(options.configId !== undefined ? { configId: options.configId } : {}),
             metrics: options.metrics,
+            timestamp: options.timestamp ?? new Date().toISOString(),
             ...(options.units ? { units: options.units } : {}),
             ...(options.containerId !== undefined || options.authContext.containerId !== null
                 ? { containerId: options.containerId ?? options.authContext.containerId }
@@ -75,5 +99,22 @@ export class TelemetryClient {
         finally {
             clearTimeout(timer);
         }
+    }
+    async sendDeviceReadings(options) {
+        const device = options.device instanceof RuntimeDeviceRef
+            ? options.device
+            : RuntimeDeviceRef.fromValue(options.device, {
+                containerId: options.authContext.containerId,
+            });
+        const { metrics, units } = buildTelemetryMaps(options.readings);
+        await this.sendMetrics({
+            authContext: options.authContext,
+            deviceId: device.deviceId,
+            configId: device.configId,
+            containerId: device.containerId,
+            metrics,
+            ...(Object.keys(units).length > 0 ? { units } : {}),
+            ...(options.timestamp ? { timestamp: options.timestamp } : {}),
+        });
     }
 }

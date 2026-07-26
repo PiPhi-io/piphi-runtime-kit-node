@@ -15,8 +15,9 @@ export declare function scheduleTelemetryDelivery(options: {
     authContext: RuntimeAuthContext;
     deviceId: string;
     configId?: string | null;
-    metrics: Record<string, unknown>;
+    metrics: Record<string, boolean | number | string>;
     units?: Record<string, string>;
+    timestamp?: string;
     containerId?: string | null;
 }): Promise<void>;
 /**
@@ -30,6 +31,10 @@ export declare function scheduleEventDelivery(options: {
     device: Record<string, unknown>;
     payload?: Record<string, unknown>;
     source?: string;
+    severity?: "info" | "warning" | "error" | "critical";
+    topic?: string | null;
+    eventId?: string;
+    ts?: string | Date;
 }): Promise<void>;
 export declare const dispatchTelemetryDelivery: typeof scheduleTelemetryDelivery;
 export declare const dispatchEventDelivery: typeof scheduleEventDelivery;

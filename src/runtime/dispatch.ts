@@ -24,21 +24,24 @@ export function scheduleTelemetryDelivery(options: {
   authContext: RuntimeAuthContext;
   deviceId: string;
   configId?: string | null;
-  metrics: Record<string, unknown>;
+  metrics: Record<string, boolean | number | string>;
   units?: Record<string, string>;
+  timestamp?: string;
   containerId?: string | null;
 }): Promise<void> {
   const telemetryOptions: {
     authContext: RuntimeAuthContext;
     deviceId: string;
     configId?: string | null;
-    metrics: Record<string, unknown>;
+    metrics: Record<string, boolean | number | string>;
     units?: Record<string, string>;
+    timestamp?: string;
     containerId?: string | null;
   } = {
     authContext: options.authContext,
     deviceId: options.deviceId,
     metrics: options.metrics,
+    timestamp: options.timestamp ?? new Date().toISOString(),
   };
 
   if (options.units !== undefined) {
@@ -70,11 +73,19 @@ export function scheduleEventDelivery(options: {
   device: Record<string, unknown>;
   payload?: Record<string, unknown>;
   source?: string;
+  severity?: "info" | "warning" | "error" | "critical";
+  topic?: string | null;
+  eventId?: string;
+  ts?: string | Date;
 }): Promise<void> {
   const coreEvent = buildCoreEventPayload({
     eventType: options.eventType,
     ...(options.source ? { source: options.source } : {}),
     ...(options.payload ? { payload: options.payload } : {}),
+    ...(options.severity ? { severity: options.severity } : {}),
+    ...(options.topic ? { topic: options.topic } : {}),
+    ...(options.eventId ? { eventId: options.eventId } : {}),
+    ...(options.ts ? { ts: options.ts } : {}),
     configId:
       "configId" in options.device ? resolveConfigId(options.device as Record<string, unknown>) : "",
     containerId: String(options.device.containerId ?? options.authContext.containerId ?? ""),

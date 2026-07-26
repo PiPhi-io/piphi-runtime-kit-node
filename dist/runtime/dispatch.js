@@ -18,6 +18,7 @@ export function scheduleTelemetryDelivery(options) {
         authContext: options.authContext,
         deviceId: options.deviceId,
         metrics: options.metrics,
+        timestamp: options.timestamp ?? new Date().toISOString(),
     };
     if (options.units !== undefined) {
         telemetryOptions.units = options.units;
@@ -38,6 +39,10 @@ export function scheduleEventDelivery(options) {
         eventType: options.eventType,
         ...(options.source ? { source: options.source } : {}),
         ...(options.payload ? { payload: options.payload } : {}),
+        ...(options.severity ? { severity: options.severity } : {}),
+        ...(options.topic ? { topic: options.topic } : {}),
+        ...(options.eventId ? { eventId: options.eventId } : {}),
+        ...(options.ts ? { ts: options.ts } : {}),
         configId: "configId" in options.device ? resolveConfigId(options.device) : "",
         containerId: String(options.device.containerId ?? options.authContext.containerId ?? ""),
         integrationId: String(options.device.integrationId ?? ""),

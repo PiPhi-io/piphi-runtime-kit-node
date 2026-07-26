@@ -106,18 +106,22 @@ export interface RuntimeDiagnosticsResponse {
 export interface TelemetryPayload {
     deviceId: string;
     configId?: string | null;
-    metrics: Record<string, unknown>;
+    metrics: Record<string, boolean | number | string>;
     units?: Record<string, string>;
+    timestamp: string;
     containerId?: string | null;
     integrationId?: string | null;
 }
 export interface CoreEventPayload {
-    eventType: string;
-    source?: string;
-    severity?: "debug" | "info" | "warning" | "error";
-    payload?: Record<string, unknown>;
+    eventId: string;
+    type: string;
+    ts: string;
+    integrationId: string;
     configId: string;
     containerId: string;
-    integrationId: string;
     deviceId?: string | null;
+    severity: "info" | "warning" | "error" | "critical";
+    transport: "rest" | "mqtt";
+    topic?: string | null;
+    data: Record<string, unknown>;
 }

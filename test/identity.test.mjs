@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   buildRuntimeIdentity,
+  RuntimeDeviceRef,
+  RuntimeIdentityError,
   resolveConfigId,
   resolveDeviceId,
 } from "../dist/runtime/identity.js";
@@ -24,6 +26,21 @@ test("identity helpers prefer explicit configId and deviceId", () => {
     containerId: "container-1",
     integrationId: "demo-runtime",
   });
+});
+
+test("RuntimeDeviceRef validates telemetry and event scope", () => {
+  const ref = RuntimeDeviceRef.fromValue({
+    configId: "cfg-1",
+    deviceId: "device-1",
+    containerId: "container-1",
+    integrationId: "integration-1",
+  });
+  assert.equal(ref.requireEventScope(), ref);
+  assert.throws(() => RuntimeDeviceRef.fromValue({}), RuntimeIdentityError);
+  assert.throws(
+    () => RuntimeDeviceRef.fromValue({ id: "cfg-2" }).requireEventScope(),
+    RuntimeIdentityError,
+  );
 });
 
 test("identity helpers fall back to id", () => {

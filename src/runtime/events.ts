@@ -8,6 +8,7 @@ import { classifyCoreDeliveryError } from "./errors.js";
 import { RuntimeAuthContext } from "./auth.js";
 import { RuntimeProcessState } from "./state.js";
 import { buildCoreAuthHeaders } from "./telemetry.js";
+import { RuntimeDeviceRef } from "./identity.js";
 
 /**
  * Normalize an integration event payload into a plain object.
@@ -22,8 +23,38 @@ export function normalizeEventPayload(payload: IntegrationEventRequest): Integra
 /**
  * Build a Core-bound event payload with explicit routing ids.
  */
-export function buildCoreEventPayload(values: CoreEventPayload): CoreEventPayload {
-  return values;
+export function buildCoreEventPayload(values: {
+  eventType: string;
+  integrationId: string;
+  configId: string;
+  containerId: string;
+  deviceId?: string | null;
+  payload?: Record<string, unknown>;
+  source?: string;
+  severity?: CoreEventPayload["severity"];
+  transport?: CoreEventPayload["transport"];
+  topic?: string | null;
+  eventId?: string;
+  ts?: string | Date;
+}): CoreEventPayload {
+  const data = { ...(values.payload ?? {}) };
+  if (values.source && data.source === undefined) data.source = values.source;
+  return {
+    eventId: values.eventId ?? globalThis.crypto.randomUUID(),
+    type: values.eventType,
+    ts:
+      values.ts instanceof Date
+        ? values.ts.toISOString()
+        : (values.ts ?? new Date().toISOString()),
+    integrationId: values.integrationId,
+    configId: values.configId,
+    containerId: values.containerId,
+    ...(values.deviceId ? { deviceId: values.deviceId } : {}),
+    severity: values.severity ?? "info",
+    transport: values.transport ?? "rest",
+    ...(values.topic ? { topic: values.topic } : {}),
+    data,
+  };
 }
 
 /**
@@ -103,7 +134,19 @@ export class EventClient {
           "content-type": "application/json",
           ...buildCoreAuthHeaders(options.authContext),
         },
-        body: JSON.stringify(options.event),
+        body: JSON.stringify({
+          event_id: options.event.eventId,
+          type: options.event.type,
+          ts: options.event.ts,
+          integration_id: options.event.integrationId,
+          config_id: options.event.configId,
+          container_id: options.event.containerId,
+          ...(options.event.deviceId ? { device_id: options.event.deviceId } : {}),
+          severity: options.event.severity,
+          transport: options.event.transport,
+          ...(options.event.topic ? { topic: options.event.topic } : {}),
+          data: options.event.data,
+        }),
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -128,5 +171,40 @@ export class EventClient {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  async sendDeviceEvent(options: {
+    authContext: RuntimeAuthContext;
+    device: RuntimeDeviceRef | (Record<string, unknown> & { id?: string });
+    eventType: string;
+    payload?: Record<string, unknown>;
+    source?: string;
+    severity?: CoreEventPayload["severity"];
+    topic?: string | null;
+    eventId?: string;
+    ts?: string | Date;
+  }): Promise<void> {
+    const device =
+      options.device instanceof RuntimeDeviceRef
+        ? options.device.requireEventScope()
+        : RuntimeDeviceRef.fromValue(options.device, {
+            containerId: options.authContext.containerId,
+          }).requireEventScope();
+    await this.sendEvent({
+      authContext: options.authContext,
+      event: buildCoreEventPayload({
+        eventType: options.eventType,
+        integrationId: device.integrationId!,
+        configId: device.configId,
+        containerId: device.containerId!,
+        deviceId: device.deviceId,
+        ...(options.payload ? { payload: options.payload } : {}),
+        ...(options.source ? { source: options.source } : {}),
+        ...(options.severity ? { severity: options.severity } : {}),
+        ...(options.topic ? { topic: options.topic } : {}),
+        ...(options.eventId ? { eventId: options.eventId } : {}),
+        ...(options.ts ? { ts: options.ts } : {}),
+      }),
+    });
   }
 }

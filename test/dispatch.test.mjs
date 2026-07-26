@@ -107,6 +107,9 @@ test("scheduleEventDelivery uses configId when present", async () => {
     },
   });
   assert.equal(received.event.configId, "cfg-10");
+  assert.equal(received.event.type, "device.updated");
+  assert.match(received.event.eventId, /^[0-9a-f-]+$/i);
+  assert.match(received.event.ts, /^\d{4}-\d{2}-\d{2}T/);
 });
 
 test("scheduleEventDelivery leaves configId empty when config scope is missing", async () => {
@@ -243,8 +246,8 @@ test("scheduleEventDelivery forwards source and payload", async () => {
     payload: { battery: 82 },
     device: { configId: "cfg-14", containerId: "container-14" },
   });
-  assert.equal(received.event.source, "poller");
-  assert.deepEqual(received.event.payload, { battery: 82 });
+  assert.equal(received.event.data.source, "poller");
+  assert.deepEqual(received.event.data, { battery: 82, source: "poller" });
 });
 
 test("dispatch aliases match the schedule helpers", () => {

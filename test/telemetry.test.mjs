@@ -55,7 +55,9 @@ test("TelemetryClient sends a minimal telemetry payload", async () => {
   assert.deepEqual(JSON.parse(requestInit.body), {
     deviceId: "device-2",
     metrics: { humidity: 48 },
+    timestamp: JSON.parse(requestInit.body).timestamp,
   });
+  assert.match(JSON.parse(requestInit.body).timestamp, /^\d{4}-\d{2}-\d{2}T/);
 });
 
 test("TelemetryClient sends units when provided", async () => {

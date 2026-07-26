@@ -1,6 +1,7 @@
 import type { CoreEventPayload, IntegrationEventIngestResponse, IntegrationEventListResponse, IntegrationEventRequest } from "../types.js";
 import { RuntimeAuthContext } from "./auth.js";
 import { RuntimeProcessState } from "./state.js";
+import { RuntimeDeviceRef } from "./identity.js";
 /**
  * Normalize an integration event payload into a plain object.
  */
@@ -8,7 +9,20 @@ export declare function normalizeEventPayload(payload: IntegrationEventRequest):
 /**
  * Build a Core-bound event payload with explicit routing ids.
  */
-export declare function buildCoreEventPayload(values: CoreEventPayload): CoreEventPayload;
+export declare function buildCoreEventPayload(values: {
+    eventType: string;
+    integrationId: string;
+    configId: string;
+    containerId: string;
+    deviceId?: string | null;
+    payload?: Record<string, unknown>;
+    source?: string;
+    severity?: CoreEventPayload["severity"];
+    transport?: CoreEventPayload["transport"];
+    topic?: string | null;
+    eventId?: string;
+    ts?: string | Date;
+}): CoreEventPayload;
 /**
  * Build a standard local event-ingest response.
  */
@@ -41,5 +55,18 @@ export declare class EventClient {
     sendEvent(options: {
         authContext: RuntimeAuthContext;
         event: CoreEventPayload;
+    }): Promise<void>;
+    sendDeviceEvent(options: {
+        authContext: RuntimeAuthContext;
+        device: RuntimeDeviceRef | (Record<string, unknown> & {
+            id?: string;
+        });
+        eventType: string;
+        payload?: Record<string, unknown>;
+        source?: string;
+        severity?: CoreEventPayload["severity"];
+        topic?: string | null;
+        eventId?: string;
+        ts?: string | Date;
     }): Promise<void>;
 }
