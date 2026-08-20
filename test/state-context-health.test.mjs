@@ -65,6 +65,9 @@ test("buildRuntimeHealthResponse includes default support fields", () => {
     runtimeAuthPresent: false,
     coreClientBound: false,
     pendingTaskCount: 0,
+    maxBackgroundTaskCount: 1000,
+    backgroundTaskFailureCount: 0,
+    backgroundTaskRejectedCount: 0,
     currentGeneration: null,
     configGeneration: null,
   });
@@ -82,6 +85,7 @@ test("buildRuntimeHealthResponse includes integration metadata", () => {
   assert.equal(response.runtimeAuthPresent, true);
   assert.equal(response.coreClientBound, true);
   assert.equal(response.pendingTaskCount, 1);
+  assert.equal(response.maxBackgroundTaskCount, 1000);
   assert.deepEqual(response.integration, { id: "integration-1" });
   assert.deepEqual(response.metadata, { activeConfigs: 3 });
 });
@@ -111,6 +115,9 @@ test("buildRuntimeDiagnosticsResponse defaults fields the same way as health", (
     runtimeAuthPresent: false,
     coreClientBound: false,
     pendingTaskCount: 0,
+    maxBackgroundTaskCount: 1000,
+    backgroundTaskFailureCount: 0,
+    backgroundTaskRejectedCount: 0,
     currentGeneration: null,
     configGeneration: null,
   });

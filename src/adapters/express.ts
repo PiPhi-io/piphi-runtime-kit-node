@@ -1,5 +1,10 @@
 import { formatRuntimeAuthSyncLog, type RuntimeAuthHeaders } from "../runtime/auth.js";
 import { type RuntimeContext } from "../runtime/context.js";
+import {
+  AutomationRegistry,
+  type AutomationActionRequest,
+  type AutomationActionResult,
+} from "../automations.js";
 
 type ExpressHeaderValue = string | string[] | undefined;
 
@@ -58,4 +63,23 @@ export function formatExpressRuntimeAuthSyncLog(
     },
     payloadContainerId,
   );
+}
+
+/** Dispatch an automation command while honoring Core's idempotency header. */
+export async function dispatchAutomationActionFromExpress(
+  registry: AutomationRegistry,
+  req: ExpressLikeRequest,
+  payload: AutomationActionRequest | Record<string, unknown> = requireObjectBody(req.body),
+): Promise<AutomationActionResult> {
+  const idempotencyKey = readExpressHeaderValue(req.header("x-piphi-idempotency-key"));
+  return registry.dispatch(payload, {
+    ...(idempotencyKey ? { idempotencyKey } : {}),
+  });
+}
+
+function requireObjectBody(body: unknown): Record<string, unknown> {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new TypeError("Automation command body must be a JSON object");
+  }
+  return body as Record<string, unknown>;
 }

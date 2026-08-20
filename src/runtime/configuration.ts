@@ -4,19 +4,36 @@ import type {
   RuntimeConfigRemoveResponse,
 } from "../types.js";
 
-const DEFAULT_SECRET_KEYS = ["password", "token", "secret", "apiKey", "api_key"];
+export const DEFAULT_CONFIG_SECRET_KEYS = [
+  "password", "token", "secret", "apiKey", "api_key",
+  "accessToken", "access_token", "refreshToken", "refresh_token",
+] as const;
+
+export type RuntimeConfigValidator<T> = ((payload: unknown) => T) | { parse(payload: unknown): T };
 
 /**
  * Redact likely secret fields before logging configs.
  */
-export function redactConfigSecrets<T extends Record<string, unknown>>(config: T): T {
-  const clone = { ...config };
-  for (const key of Object.keys(clone)) {
-    if (DEFAULT_SECRET_KEYS.includes(key)) {
-      clone[key as keyof T] = "***redacted***" as T[keyof T];
+export function redactConfigSecrets<T extends Record<string, unknown>>(
+  config: T,
+  options: { secretKeys?: readonly string[] } = {},
+): T {
+  const secretKeys = new Set(
+    (options.secretKeys ?? DEFAULT_CONFIG_SECRET_KEYS).map((key) => key.toLowerCase()),
+  );
+  const redact = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(redact);
+    if (value !== null && typeof value === "object") {
+      return Object.fromEntries(Object.entries(value).map(([key, child]) => [
+        key,
+        secretKeys.has(key.toLowerCase()) && child !== null && child !== ""
+          ? "***redacted***"
+          : redact(child),
+      ]));
     }
-  }
-  return clone;
+    return value;
+  };
+  return redact(config) as T;
 }
 
 /**
@@ -54,4 +71,15 @@ export function buildConfigRemoveResponse(
     ok: true,
     ...values,
   };
+}
+
+export function validateTypedConfig<T>(payload: unknown, validator: RuntimeConfigValidator<T>): T {
+  return typeof validator === "function" ? validator(payload) : validator.parse(payload);
+}
+
+export function validateTypedConfigs<T>(
+  payloads: readonly unknown[],
+  validator: RuntimeConfigValidator<T>,
+): T[] {
+  return payloads.map((payload) => validateTypedConfig(payload, validator));
 }

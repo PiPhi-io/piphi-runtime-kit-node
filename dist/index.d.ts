@@ -1,4 +1,5 @@
 export * from "./types.js";
+export * from "./automations.js";
 export * from "./adapters/express.js";
 export * from "./adapters/fastify.js";
 export * from "./runtime/auth.js";
@@ -11,6 +12,8 @@ export * from "./runtime/errors.js";
 export * from "./runtime/events.js";
 export * from "./runtime/health.js";
 export * from "./runtime/identity.js";
+export * from "./runtime/lifecycle.js";
+export * from "./runtime/mqtt.js";
 export * from "./runtime/registry.js";
 export * from "./runtime/state.js";
 export * from "./runtime/starter.js";

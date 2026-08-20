@@ -5,6 +5,7 @@ import {
   buildLocalEventRecord,
   dispatchEventDelivery,
   dispatchTelemetryDelivery,
+  runWithRetryableCoreDeliveryBackoff,
   scheduleEventDelivery,
   scheduleTelemetryDelivery,
 } from "../dist/runtime/dispatch.js";
@@ -253,4 +254,33 @@ test("scheduleEventDelivery forwards source and payload", async () => {
 test("dispatch aliases match the schedule helpers", () => {
   assert.equal(dispatchTelemetryDelivery, scheduleTelemetryDelivery);
   assert.equal(dispatchEventDelivery, scheduleEventDelivery);
+});
+
+test("delivery backoff retries classified transient errors", async () => {
+  let attempts = 0;
+  const delays = [];
+  const result = await runWithRetryableCoreDeliveryBackoff(async () => {
+    attempts += 1;
+    if (attempts < 3) throw Object.assign(new Error("offline"), { retryable: true });
+    return "delivered";
+  }, {
+    maxAttempts: 3,
+    baseDelayMs: 25,
+    sleep: async (delay) => { delays.push(delay); },
+  });
+  assert.equal(result, "delivered");
+  assert.equal(attempts, 3);
+  assert.deepEqual(delays, [25, 50]);
+});
+
+test("delivery backoff never retries permanent errors", async () => {
+  let attempts = 0;
+  await assert.rejects(
+    runWithRetryableCoreDeliveryBackoff(async () => {
+      attempts += 1;
+      throw Object.assign(new Error("unauthorized"), { retryable: false });
+    }, { sleep: async () => assert.fail("should not sleep") }),
+    /unauthorized/,
+  );
+  assert.equal(attempts, 1);
 });

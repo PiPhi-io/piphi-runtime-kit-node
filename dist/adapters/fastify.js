@@ -30,3 +30,16 @@ export function formatFastifyRuntimeAuthSyncLog(req, payloadContainerId = getPay
         internalToken: readFastifyHeaderValue(req.headers["x-piphi-integration-token"]) ?? null,
     }, payloadContainerId);
 }
+/** Dispatch an automation command while honoring Core's idempotency header. */
+export async function dispatchAutomationActionFromFastify(registry, req, payload = requireObjectBody(req.body)) {
+    const idempotencyKey = readFastifyHeaderValue(req.headers["x-piphi-idempotency-key"]);
+    return registry.dispatch(payload, {
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+    });
+}
+function requireObjectBody(body) {
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+        throw new TypeError("Automation command body must be a JSON object");
+    }
+    return body;
+}

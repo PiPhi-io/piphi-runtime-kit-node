@@ -5,6 +5,32 @@ import { EventClient, buildCoreEventPayload } from "./events.js";
 import { TelemetryClient } from "./telemetry.js";
 import { resolveConfigId } from "./identity.js";
 
+export interface CoreDeliveryRetryOptions {
+  maxAttempts?: number;
+  baseDelayMs?: number;
+  maximumDelayMs?: number;
+  sleep?: (delayMs: number) => Promise<void>;
+}
+
+/** Retry only errors explicitly classified by the SDK as safe to retry. */
+export async function runWithRetryableCoreDeliveryBackoff<T>(
+  operation: () => Promise<T>,
+  options: CoreDeliveryRetryOptions = {},
+): Promise<T> {
+  const maxAttempts = Math.max(1, Math.floor(options.maxAttempts ?? 3));
+  const baseDelayMs = Math.max(0, options.baseDelayMs ?? 100);
+  const maximumDelayMs = Math.max(baseDelayMs, options.maximumDelayMs ?? 2_000);
+  const sleep = options.sleep ?? ((delayMs) => new Promise<void>((resolve) => setTimeout(resolve, delayMs)));
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isRetryableDeliveryError(error) || attempt >= maxAttempts) throw error;
+      await sleep(Math.min(maximumDelayMs, baseDelayMs * 2 ** (attempt - 1)));
+    }
+  }
+}
+
 /**
  * Build a local event record before persisting or returning it.
  */
@@ -28,6 +54,7 @@ export function scheduleTelemetryDelivery(options: {
   units?: Record<string, string>;
   timestamp?: string;
   containerId?: string | null;
+  retry?: CoreDeliveryRetryOptions;
 }): Promise<void> {
   const telemetryOptions: {
     authContext: RuntimeAuthContext;
@@ -58,7 +85,10 @@ export function scheduleTelemetryDelivery(options: {
 
   return createTrackedTask(
     options.processState,
-    options.telemetryClient.sendMetrics(telemetryOptions),
+    runWithRetryableCoreDeliveryBackoff(
+      () => options.telemetryClient.sendMetrics(telemetryOptions),
+      options.retry,
+    ),
   );
 }
 
@@ -77,6 +107,7 @@ export function scheduleEventDelivery(options: {
   topic?: string | null;
   eventId?: string;
   ts?: string | Date;
+  retry?: CoreDeliveryRetryOptions;
 }): Promise<void> {
   const coreEvent = buildCoreEventPayload({
     eventType: options.eventType,
@@ -95,11 +126,19 @@ export function scheduleEventDelivery(options: {
 
   return createTrackedTask(
     options.processState,
-    options.eventClient.sendEvent({
-      authContext: options.authContext,
-      event: coreEvent,
-    }),
+    runWithRetryableCoreDeliveryBackoff(
+      () => options.eventClient.sendEvent({
+        authContext: options.authContext,
+        event: coreEvent,
+      }),
+      options.retry,
+    ),
   );
+}
+
+function isRetryableDeliveryError(error: unknown): error is { retryable: true } {
+  return error !== null && typeof error === "object" && "retryable" in error
+    && (error as { retryable?: unknown }).retryable === true;
 }
 
 export const dispatchTelemetryDelivery = scheduleTelemetryDelivery;

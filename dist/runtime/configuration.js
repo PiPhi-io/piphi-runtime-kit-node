@@ -1,15 +1,26 @@
-const DEFAULT_SECRET_KEYS = ["password", "token", "secret", "apiKey", "api_key"];
+export const DEFAULT_CONFIG_SECRET_KEYS = [
+    "password", "token", "secret", "apiKey", "api_key",
+    "accessToken", "access_token", "refreshToken", "refresh_token",
+];
 /**
  * Redact likely secret fields before logging configs.
  */
-export function redactConfigSecrets(config) {
-    const clone = { ...config };
-    for (const key of Object.keys(clone)) {
-        if (DEFAULT_SECRET_KEYS.includes(key)) {
-            clone[key] = "***redacted***";
+export function redactConfigSecrets(config, options = {}) {
+    const secretKeys = new Set((options.secretKeys ?? DEFAULT_CONFIG_SECRET_KEYS).map((key) => key.toLowerCase()));
+    const redact = (value) => {
+        if (Array.isArray(value))
+            return value.map(redact);
+        if (value !== null && typeof value === "object") {
+            return Object.fromEntries(Object.entries(value).map(([key, child]) => [
+                key,
+                secretKeys.has(key.toLowerCase()) && child !== null && child !== ""
+                    ? "***redacted***"
+                    : redact(child),
+            ]));
         }
-    }
-    return clone;
+        return value;
+    };
+    return redact(config);
 }
 /**
  * Format a safe config-apply log line.
@@ -40,4 +51,10 @@ export function buildConfigRemoveResponse(values) {
         ok: true,
         ...values,
     };
+}
+export function validateTypedConfig(payload, validator) {
+    return typeof validator === "function" ? validator(payload) : validator.parse(payload);
+}
+export function validateTypedConfigs(payloads, validator) {
+    return payloads.map((payload) => validateTypedConfig(payload, validator));
 }

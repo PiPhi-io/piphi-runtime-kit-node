@@ -1,5 +1,10 @@
 import { formatRuntimeAuthSyncLog, type RuntimeAuthHeaders } from "../runtime/auth.js";
 import { type RuntimeContext } from "../runtime/context.js";
+import {
+  AutomationRegistry,
+  type AutomationActionRequest,
+  type AutomationActionResult,
+} from "../automations.js";
 
 type FastifyHeaderValue = string | string[] | undefined;
 
@@ -57,4 +62,23 @@ export function formatFastifyRuntimeAuthSyncLog(
     },
     payloadContainerId,
   );
+}
+
+/** Dispatch an automation command while honoring Core's idempotency header. */
+export async function dispatchAutomationActionFromFastify(
+  registry: AutomationRegistry,
+  req: FastifyLikeRequest,
+  payload: AutomationActionRequest | Record<string, unknown> = requireObjectBody(req.body),
+): Promise<AutomationActionResult> {
+  const idempotencyKey = readFastifyHeaderValue(req.headers["x-piphi-idempotency-key"]);
+  return registry.dispatch(payload, {
+    ...(idempotencyKey ? { idempotencyKey } : {}),
+  });
+}
+
+function requireObjectBody(body: unknown): Record<string, unknown> {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new TypeError("Automation command body must be a JSON object");
+  }
+  return body as Record<string, unknown>;
 }

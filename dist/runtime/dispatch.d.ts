@@ -2,6 +2,14 @@ import { RuntimeAuthContext } from "./auth.js";
 import { RuntimeProcessState } from "./state.js";
 import { EventClient } from "./events.js";
 import { TelemetryClient } from "./telemetry.js";
+export interface CoreDeliveryRetryOptions {
+    maxAttempts?: number;
+    baseDelayMs?: number;
+    maximumDelayMs?: number;
+    sleep?: (delayMs: number) => Promise<void>;
+}
+/** Retry only errors explicitly classified by the SDK as safe to retry. */
+export declare function runWithRetryableCoreDeliveryBackoff<T>(operation: () => Promise<T>, options?: CoreDeliveryRetryOptions): Promise<T>;
 /**
  * Build a local event record before persisting or returning it.
  */
@@ -19,6 +27,7 @@ export declare function scheduleTelemetryDelivery(options: {
     units?: Record<string, string>;
     timestamp?: string;
     containerId?: string | null;
+    retry?: CoreDeliveryRetryOptions;
 }): Promise<void>;
 /**
  * Dispatch one Core event delivery task in the background.
@@ -35,6 +44,7 @@ export declare function scheduleEventDelivery(options: {
     topic?: string | null;
     eventId?: string;
     ts?: string | Date;
+    retry?: CoreDeliveryRetryOptions;
 }): Promise<void>;
 export declare const dispatchTelemetryDelivery: typeof scheduleTelemetryDelivery;
 export declare const dispatchEventDelivery: typeof scheduleEventDelivery;

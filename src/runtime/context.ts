@@ -19,7 +19,7 @@ export class RuntimeContext {
   /**
    * Bind a shared fetch implementation for Core calls.
    */
-  setCoreFetch(coreFetch: typeof fetch): void {
+  setCoreFetch(coreFetch: typeof fetch | null): void {
     this.processState.setCoreFetch(coreFetch);
   }
 

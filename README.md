@@ -7,7 +7,7 @@ plumbing without hiding the HTTP contract behind a large framework. The goal
 is to make the common runtime path obvious while still letting developers own
 their vendor logic.
 
-Version `0.1.2` is the current documented baseline.
+Version `0.4.0` is the current documented baseline.
 
 > New to PiPhi? Start with [The Golden Path](#the-golden-path), then read [The IDs You Need To Understand](#the-ids-you-need-to-understand), then compare your code to the example apps.
 
@@ -23,6 +23,7 @@ Version `0.1.2` is the current documented baseline.
 - [Plain-Language Concepts](#plain-language-concepts)
 - [Typical Runtime Flow](#typical-runtime-flow)
 - [Thin framework adapters](#thin-framework-adapters)
+- [Automation actions and events](#automation-actions-and-events)
 - [Clear Error Handling](#clear-error-handling)
 - [Common Mistakes](#common-mistakes)
 - [Troubleshooting](#troubleshooting)
@@ -56,7 +57,9 @@ The SDK is meant to own the shared PiPhi runtime plumbing:
 - request/header auth helpers
 - tiny Express and Fastify auth adapters
 - process state
-- background promise tracking
+- bounded background task tracking and cooperative shutdown
+- managed runtime startup/shutdown and environment auth bootstrap
+- optional MQTT JSON publishing/subscriptions and source topic helpers
 - telemetry delivery to PiPhi Core
 - event delivery to PiPhi Core
 - config sync helpers
@@ -65,6 +68,9 @@ The SDK is meant to own the shared PiPhi runtime plumbing:
 - runtime health and diagnostics helpers
 - in-memory runtime registry for active entries, state, and recent events
 - PiPhi-specific delivery errors
+- a typed automation action and event registry
+- durable action idempotency for safe retries and process restarts
+- behavior-contract auditing and realistic mock events for tests
 
 ## What stays in your integration
 
@@ -78,6 +84,46 @@ Your integration still owns vendor-specific behavior:
 
 The SDK should make the runtime easier to write, not take over the business
 logic of the device or API you are integrating.
+
+## Automation actions and events
+
+Register the commands implemented by your integration once, then route Core's
+`/command` request through the SDK adapter. The durable store ensures the same
+idempotency key cannot repeat a device effect after a retry or process restart.
+
+```ts
+import Fastify from "fastify";
+import {
+  AutomationRegistry,
+  FileAutomationIdempotencyStore,
+} from "piphi-runtime-kit-node";
+import { dispatchAutomationActionFromFastify } from "piphi-runtime-kit-node/adapters/fastify";
+
+const automations = new AutomationRegistry({
+  idempotencyStore: new FileAutomationIdempotencyStore(
+    process.env.PIPHI_AUTOMATION_LEDGER_DIR ?? "./data/automation-actions",
+  ),
+});
+
+automations.action("light.set", {
+  label: "Set light",
+  parameterSchema: { type: "object" },
+})(async ({ args, deviceId }) => {
+  await vendor.setLight(deviceId, Number(args.brightness));
+  return { brightness: args.brightness };
+});
+
+const app = Fastify();
+app.post("/command", async (request, reply) => {
+  const result = await dispatchAutomationActionFromFastify(automations, request);
+  return reply.code(result.ok ? 200 : 422).send(result.toJSON());
+});
+```
+
+Register emitted event types too, and call `assertBehaviorsContract(...)` in CI
+to catch any drift between runtime code and `behaviors.json`. Use
+`buildMockAutomationEvent(...)` only in automated tests; it does not create a
+mock or dry-run option in the end-user UI.
 
 ## Install
 
@@ -251,6 +297,71 @@ scheduleEventDelivery(runtime.processState, {
   },
   source: "demo_runtime",
 });
+```
+
+Background tasks are bounded so a disconnected Core cannot grow memory without
+limit. For long-running work, use an `AbortSignal`-aware factory and let the
+runtime lifecycle stop it cleanly:
+
+```ts
+import { createTrackedTask, runRuntimeLifecycle } from "piphi-runtime-kit-node";
+
+await runRuntimeLifecycle(runtime, {
+  onStartup: async () => {
+    createTrackedTask(runtime.processState, async (signal) => {
+      await pollDevicesUntilStopped({ signal });
+    });
+  },
+  run: async () => app.listen({ port: 8080 }),
+  onShutdown: async () => app.close(),
+});
+```
+
+`runRuntimeLifecycle(...)` loads `PIPHI_CONTAINER_ID` and
+`PIPHI_INTEGRATION_INTERNAL_TOKEN`, binds the shared Core fetch client, drains
+tracked work, and always releases the client—even when startup or runtime work
+fails.
+
+### Optional MQTT helpers
+
+Install the optional MQTT peer when your integration consumes a broker:
+
+```bash
+npm install mqtt
+```
+
+```ts
+import {
+  MqttJsonClient,
+  buildSourcePacketEnvelope,
+  buildSourcePacketsTopic,
+} from "piphi-runtime-kit-node";
+
+const mqtt = new MqttJsonClient({ hostname: "broker.local", qos: 1 });
+
+await mqtt.withSession(async (session) => {
+  await session.publishJson(
+    buildSourcePacketsTopic("rtl433"),
+    buildSourcePacketEnvelope({
+      source: "rtl433",
+      packet: { model: "weather-station", id: "sensor-1", temperature_c: 21.4 },
+    }),
+  );
+});
+```
+
+Malformed or non-object MQTT JSON is ignored by subscriptions. Transport errors
+end the session and `runSubscriptionForever(...)` reconnects with bounded delay.
+
+### Runtime config validation
+
+TypeScript types disappear at runtime, so config validation accepts either a
+validator function or any schema exposing `parse()` (for example Zod):
+
+```ts
+import { validateTypedConfig } from "piphi-runtime-kit-node";
+
+const config = validateTypedConfig(payload, DemoConfigSchema);
 ```
 
 ### 6. Expose the common runtime routes
@@ -539,6 +650,8 @@ This is meant to be easier to understand than raw transport exceptions alone.
 - Sending events without `configId`, `containerId`, or `integrationId`.
 - Treating the runtime registry as the source of truth.
 - Expecting the SDK to own polling cadence or vendor protocol logic.
+- Starting unbounded background promises instead of using `createTrackedTask`.
+- Using MQTT helpers without installing the optional `mqtt` peer package.
 
 ## Troubleshooting
 
@@ -575,6 +688,8 @@ src/
     errors.ts
     events.ts
     health.ts
+    lifecycle.ts
+    mqtt.ts
     registry.ts
     state.ts
     starter.ts

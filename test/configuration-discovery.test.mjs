@@ -6,6 +6,8 @@ import {
   buildConfigRemoveResponse,
   formatConfigApplyLog,
   redactConfigSecrets,
+  validateTypedConfig,
+  validateTypedConfigs,
 } from "../dist/runtime/configuration.js";
 import {
   buildDiscoveryResponse,
@@ -34,9 +36,13 @@ test("redactConfigSecrets redacts all default secret keys", () => {
   );
 });
 
-test("redactConfigSecrets is shallow and preserves non-secret nested values", () => {
-  const config = { nested: { token: "inside" }, alias: "Office" };
-  assert.deepEqual(redactConfigSecrets(config), config);
+test("redactConfigSecrets recursively protects nested objects and arrays", () => {
+  const config = { nested: { token: "inside" }, entries: [{ access_token: "secret" }], alias: "Office" };
+  assert.deepEqual(redactConfigSecrets(config), {
+    nested: { token: "***redacted***" },
+    entries: [{ access_token: "***redacted***" }],
+    alias: "Office",
+  });
 });
 
 test("formatConfigApplyLog redacts secrets and includes ids", () => {
@@ -78,6 +84,23 @@ test("buildConfigRemoveResponse returns an ok payload", () => {
       configId: "cfg-4",
       removed: true,
     },
+  );
+});
+
+test("validateTypedConfig accepts validator functions and parse schemas", () => {
+  const validate = (payload) => {
+    if (!payload || typeof payload.host !== "string") throw new TypeError("host is required");
+    return { host: payload.host.trim() };
+  };
+  assert.deepEqual(validateTypedConfig({ host: " device.local " }, validate), { host: "device.local" });
+  assert.deepEqual(validateTypedConfig({ port: 443 }, { parse: (value) => ({ port: Number(value.port) }) }), { port: 443 });
+  assert.throws(() => validateTypedConfig({}, validate), /host is required/);
+});
+
+test("validateTypedConfigs validates every config and preserves ordering", () => {
+  assert.deepEqual(
+    validateTypedConfigs([{ id: "a" }, { id: "b" }], (payload) => ({ id: payload.id.toUpperCase() })),
+    [{ id: "A" }, { id: "B" }],
   );
 });
 

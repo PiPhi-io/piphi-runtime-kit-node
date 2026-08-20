@@ -102,6 +102,9 @@ export interface RuntimeHealthResponse {
   runtimeAuthPresent: boolean;
   coreClientBound: boolean;
   pendingTaskCount: number;
+  maxBackgroundTaskCount: number;
+  backgroundTaskFailureCount: number;
+  backgroundTaskRejectedCount: number;
   currentGeneration?: number | null;
   configGeneration?: number | null;
   metadata?: Record<string, unknown>;
@@ -113,6 +116,9 @@ export interface RuntimeDiagnosticsResponse {
   runtimeAuthPresent: boolean;
   coreClientBound: boolean;
   pendingTaskCount: number;
+  maxBackgroundTaskCount: number;
+  backgroundTaskFailureCount: number;
+  backgroundTaskRejectedCount: number;
   currentGeneration?: number | null;
   configGeneration?: number | null;
   diagnostics?: Record<string, unknown>;

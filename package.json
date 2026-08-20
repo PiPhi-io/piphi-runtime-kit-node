@@ -1,6 +1,6 @@
 {
   "name": "piphi-runtime-kit-node",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "PiPhi Network runtime integration helpers for Node.js",
   "keywords": [
     "piphi",
@@ -34,6 +34,8 @@
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "npm run build && node --test",
+    "test:automation": "npm run build && node --test test/automations.test.mjs",
+    "pack:check": "npm pack --dry-run",
     "test:watch": "node --test --watch"
   },
   "engines": {
@@ -54,5 +56,13 @@
   "author": "PiPhi Network",
   "devDependencies": {
     "typescript": "^6.0.2"
+  },
+  "peerDependencies": {
+    "mqtt": "^5.10.0"
+  },
+  "peerDependenciesMeta": {
+    "mqtt": {
+      "optional": true
+    }
   }
 }

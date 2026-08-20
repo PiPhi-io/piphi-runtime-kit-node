@@ -13,7 +13,7 @@ export declare class RuntimeContext {
     /**
      * Bind a shared fetch implementation for Core calls.
      */
-    setCoreFetch(coreFetch: typeof fetch): void;
+    setCoreFetch(coreFetch: typeof fetch | null): void;
     /**
      * Set the active config generation for this runtime.
      */
