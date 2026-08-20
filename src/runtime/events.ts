@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   CoreEventPayload,
   IntegrationEventIngestResponse,
@@ -40,7 +41,7 @@ export function buildCoreEventPayload(values: {
   const data = { ...(values.payload ?? {}) };
   if (values.source && data.source === undefined) data.source = values.source;
   return {
-    eventId: values.eventId ?? globalThis.crypto.randomUUID(),
+    eventId: values.eventId ?? randomUUID(),
     type: values.eventType,
     ts:
       values.ts instanceof Date

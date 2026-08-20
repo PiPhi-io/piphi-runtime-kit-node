@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { classifyCoreDeliveryError } from "./errors.js";
 import { buildCoreAuthHeaders } from "./telemetry.js";
 import { RuntimeDeviceRef } from "./identity.js";
@@ -18,7 +19,7 @@ export function buildCoreEventPayload(values) {
     if (values.source && data.source === undefined)
         data.source = values.source;
     return {
-        eventId: values.eventId ?? globalThis.crypto.randomUUID(),
+        eventId: values.eventId ?? randomUUID(),
         type: values.eventType,
         ts: values.ts instanceof Date
             ? values.ts.toISOString()
