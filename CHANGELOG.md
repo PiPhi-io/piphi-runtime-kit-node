@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 - 2026-10-08
+
+Changed:
+
+- publish releases with Node.js 24 and npm 11.15 so npm trusted publishing can
+  exchange GitHub Actions OIDC credentials
+
 ## 0.5.0 - 2026-10-08
 
 - Added the generic `RuntimeStateService` and `starter.state` APIs.

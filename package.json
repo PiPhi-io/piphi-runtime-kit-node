@@ -1,6 +1,6 @@
 {
   "name": "piphi-runtime-kit-node",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "PiPhi Network runtime integration helpers for Node.js",
   "keywords": [
     "piphi",
