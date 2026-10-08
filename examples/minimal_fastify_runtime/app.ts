@@ -217,13 +217,24 @@ export function registerMinimalFastifyRuntimeRoutes(app: {
     );
   });
 
-  app.get("/state", (_request, reply) => {
+  app.get("/state", async (request, reply) => {
+    const query = request.query as { refresh?: string | boolean; refresh_request_id?: string };
+    const refresh = query.refresh === true || query.refresh === "true";
+    if (refresh && !query.refresh_request_id) {
+      return reply.code(400).send({ detail: "refresh_request_id is required when refresh=true" });
+    }
+    const statePayload = await starter.state.response(
+      query.refresh_request_id
+        ? { refresh, refreshRequestId: query.refresh_request_id }
+        : { refresh },
+    );
     reply.send({
+      ...statePayload,
       summary: {
         activeConfigCount: registry.ids().length,
         recentEventCount: registry.recentEvents.length,
       },
-      entries: Object.fromEntries(registry.entries),
+      runtimeEntries: Object.fromEntries(registry.entries),
       stateSnapshots: Object.fromEntries(registry.stateSnapshots),
     });
   });

@@ -205,13 +205,25 @@ app.post("/deconfigure/:configId", async (req: Request, res: Response) => {
   );
 });
 
-app.get("/state", (_req: Request, res: Response) => {
+app.get("/state", async (req: Request, res: Response) => {
+  const refresh = req.query.refresh === "true";
+  const refreshRequestId = typeof req.query.refresh_request_id === "string"
+    ? req.query.refresh_request_id
+    : undefined;
+  if (refresh && !refreshRequestId) {
+    res.status(400).json({ detail: "refresh_request_id is required when refresh=true" });
+    return;
+  }
+  const statePayload = await starter.state.response(
+    refreshRequestId ? { refresh, refreshRequestId } : { refresh },
+  );
   res.json({
+    ...statePayload,
     summary: {
       activeConfigCount: registry.ids().length,
       recentEventCount: registry.recentEvents.length,
     },
-    entries: Object.fromEntries(registry.entries),
+    runtimeEntries: Object.fromEntries(registry.entries),
     stateSnapshots: Object.fromEntries(registry.stateSnapshots),
   });
 });

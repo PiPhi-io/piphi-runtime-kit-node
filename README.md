@@ -707,3 +707,31 @@ If you are unsure where to start:
 4. use the registry for active runtime state
 5. send telemetry and events through the SDK
 6. compare your code to the example app
+# One state service, four small operations
+
+The starter owns the `/state` protocol so integrations only provide vendor logic:
+
+```ts
+starter.state.provide(async () => {
+  await device.update();
+  starter.state.publish(device.id, normalize(device));
+}, { source: "device_api" });
+```
+
+Use `starter.state.publish(entryId, state)` for poll or webhook updates and
+`starter.state.get(entryId)` for cached state. Route code returns
+`await starter.state.response(...)`; the SDK handles refresh IDs, receipts,
+timeouts, and unsupported refreshes.
+
+```ts
+app.get("/state", async (request) => {
+  const { refresh = false, refresh_request_id } = request.query;
+  return starter.state.response({
+    refresh,
+    ...(refresh_request_id ? { refreshRequestId: refresh_request_id } : {}),
+  });
+});
+```
+
+Leave `provide` unregistered for push-only integrations. The SDK returns an
+explicit `unsupported` receipt instead of pretending cached data was refreshed.

@@ -16,6 +16,7 @@ export * from "./runtime/lifecycle.js";
 export * from "./runtime/mqtt.js";
 export * from "./runtime/registry.js";
 export * from "./runtime/state.js";
+export * from "./runtime/state-service.js";
 export * from "./runtime/starter.js";
 export * from "./runtime/tasks.js";
 export * from "./runtime/telemetry.js";

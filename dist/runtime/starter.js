@@ -3,6 +3,7 @@ import { RuntimeContext } from "./context.js";
 import { EventClient } from "./events.js";
 import { buildRuntimeDiagnosticsResponse, buildRuntimeHealthResponse } from "./health.js";
 import { RuntimeRegistry } from "./registry.js";
+import { RuntimeStateService } from "./state-service.js";
 import { TelemetryClient } from "./telemetry.js";
 /**
  * Beginner-friendly "golden path" runtime bundle.
@@ -17,6 +18,7 @@ export class RuntimeStarter {
     telemetryClient;
     eventClient;
     configSync;
+    state;
     integrationId;
     integrationName;
     version;
@@ -45,6 +47,7 @@ export class RuntimeStarter {
                 processState: this.runtime.processState,
             });
         this.configSync = new ConfigSyncCoordinator(this.runtime.processState);
+        this.state = new RuntimeStateService(this.registry);
     }
     integrationMetadata() {
         return {

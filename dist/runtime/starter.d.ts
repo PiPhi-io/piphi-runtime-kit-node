@@ -1,7 +1,8 @@
 import { ConfigSyncCoordinator } from "./config-sync.js";
 import { RuntimeContext } from "./context.js";
 import { EventClient } from "./events.js";
-import { RuntimeRegistry } from "./registry.js";
+import { RuntimeRegistry, type RuntimeRegistryEntry } from "./registry.js";
+import { RuntimeStateService } from "./state-service.js";
 import { TelemetryClient } from "./telemetry.js";
 import type { RuntimeEntitiesResponse, RuntimeEntity } from "../types.js";
 export interface RuntimeStarterOptions {
@@ -18,12 +19,13 @@ export interface RuntimeStarterOptions {
  * can start with one object instead of wiring context, registry, telemetry,
  * events, and config sync separately.
  */
-export declare class RuntimeStarter {
+export declare class RuntimeStarter<TState extends Record<string, unknown> = Record<string, unknown>, TEntry extends RuntimeRegistryEntry<TState> = RuntimeRegistryEntry<TState>, TEvent extends Record<string, unknown> = Record<string, unknown>> {
     readonly runtime: RuntimeContext;
-    readonly registry: RuntimeRegistry<Record<string, unknown>, Record<string, unknown>, Record<string, unknown>>;
+    readonly registry: RuntimeRegistry<TState, TEntry, TEvent>;
     readonly telemetryClient: TelemetryClient;
     readonly eventClient: EventClient;
     readonly configSync: ConfigSyncCoordinator;
+    readonly state: RuntimeStateService<TState, TEntry, TEvent>;
     readonly integrationId: string;
     readonly integrationName: string;
     readonly version: string;
@@ -40,4 +42,4 @@ export declare function buildRuntimeEntitiesResponse<T extends RuntimeEntity>(en
     capabilities?: Record<string, unknown>;
     commands?: Record<string, unknown>;
 }): RuntimeEntitiesResponse<T>;
-export declare function createRuntimeStarter(options: RuntimeStarterOptions): RuntimeStarter;
+export declare function createRuntimeStarter<TState extends Record<string, unknown> = Record<string, unknown>, TEntry extends RuntimeRegistryEntry<TState> = RuntimeRegistryEntry<TState>, TEvent extends Record<string, unknown> = Record<string, unknown>>(options: RuntimeStarterOptions): RuntimeStarter<TState, TEntry, TEvent>;

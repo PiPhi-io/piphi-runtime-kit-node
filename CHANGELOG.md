@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 - 2026-10-08
+
+- Added the generic `RuntimeStateService` and `starter.state` APIs.
+- Made `RuntimeStarter` generic so registry entries and state remain typed from
+  `publish` through `response` without downstream casts.
+- Added SDK-owned refresh receipts, timeout handling, and explicit push-only
+  unsupported responses.
+
 ## 0.4.0
 
 - Added a typed automation action/event registry with behavior-contract auditing.

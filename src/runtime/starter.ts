@@ -2,7 +2,8 @@ import { ConfigSyncCoordinator } from "./config-sync.js";
 import { RuntimeContext } from "./context.js";
 import { EventClient } from "./events.js";
 import { buildRuntimeDiagnosticsResponse, buildRuntimeHealthResponse } from "./health.js";
-import { RuntimeRegistry } from "./registry.js";
+import { RuntimeRegistry, type RuntimeRegistryEntry } from "./registry.js";
+import { RuntimeStateService } from "./state-service.js";
 import { TelemetryClient } from "./telemetry.js";
 import type { RuntimeEntitiesResponse, RuntimeEntity } from "../types.js";
 
@@ -21,16 +22,17 @@ export interface RuntimeStarterOptions {
  * can start with one object instead of wiring context, registry, telemetry,
  * events, and config sync separately.
  */
-export class RuntimeStarter {
+export class RuntimeStarter<
+  TState extends Record<string, unknown> = Record<string, unknown>,
+  TEntry extends RuntimeRegistryEntry<TState> = RuntimeRegistryEntry<TState>,
+  TEvent extends Record<string, unknown> = Record<string, unknown>,
+> {
   readonly runtime = new RuntimeContext();
-  readonly registry: RuntimeRegistry<
-    Record<string, unknown>,
-    Record<string, unknown>,
-    Record<string, unknown>
-  >;
+  readonly registry: RuntimeRegistry<TState, TEntry, TEvent>;
   readonly telemetryClient: TelemetryClient;
   readonly eventClient: EventClient;
   readonly configSync: ConfigSyncCoordinator;
+  readonly state: RuntimeStateService<TState, TEntry, TEvent>;
   readonly integrationId: string;
   readonly integrationName: string;
   readonly version: string;
@@ -66,6 +68,7 @@ export class RuntimeStarter {
           },
     );
     this.configSync = new ConfigSyncCoordinator(this.runtime.processState);
+    this.state = new RuntimeStateService(this.registry);
   }
 
   integrationMetadata(): Record<string, unknown> {
@@ -120,6 +123,10 @@ export function buildRuntimeEntitiesResponse<T extends RuntimeEntity>(
   };
 }
 
-export function createRuntimeStarter(options: RuntimeStarterOptions): RuntimeStarter {
-  return new RuntimeStarter(options);
+export function createRuntimeStarter<
+  TState extends Record<string, unknown> = Record<string, unknown>,
+  TEntry extends RuntimeRegistryEntry<TState> = RuntimeRegistryEntry<TState>,
+  TEvent extends Record<string, unknown> = Record<string, unknown>,
+>(options: RuntimeStarterOptions): RuntimeStarter<TState, TEntry, TEvent> {
+  return new RuntimeStarter<TState, TEntry, TEvent>(options);
 }
