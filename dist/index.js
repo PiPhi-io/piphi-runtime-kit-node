@@ -1,5 +1,6 @@
 export * from "./types.js";
 export * from "./automations.js";
+export * from "./camera.js";
 export * from "./adapters/express.js";
 export * from "./adapters/fastify.js";
 export * from "./runtime/auth.js";
