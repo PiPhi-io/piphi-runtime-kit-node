@@ -16,6 +16,7 @@ export * from "./runtime/health.js";
 export * from "./runtime/identity.js";
 export * from "./runtime/lifecycle.js";
 export * from "./runtime/mqtt.js";
+export * from "./runtime/network.js";
 export * from "./runtime/registry.js";
 export * from "./runtime/state.js";
 export * from "./runtime/state-service.js";
