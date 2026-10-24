@@ -7,7 +7,22 @@ plumbing without hiding the HTTP contract behind a large framework. The goal
 is to make the common runtime path obvious while still letting developers own
 their vendor logic.
 
-Version `0.4.0` is the current documented baseline.
+Version `0.6.0` is the current documented baseline.
+
+## Onboarding declarations
+
+Runtime discovery and homeowner onboarding are separate contracts. Validate a
+manifest's explicit first-use declaration without inferring it from `/discover`:
+
+```ts
+import { validateOnboardingDeclaration } from "piphi-runtime-kit-node";
+
+const onboarding = validateOnboardingDeclaration({ mode: "manual" });
+```
+
+The supported modes are `manual`, `discovery`, `account`, `service`, and
+`none`. Runtime strategies such as `passive` or `mdns` belong in runtime
+discovery metadata, not in `onboarding.mode`.
 
 > New to PiPhi? Start with [The Golden Path](#the-golden-path), then read [The IDs You Need To Understand](#the-ids-you-need-to-understand), then compare your code to the example apps.
 
