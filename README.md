@@ -11,7 +11,7 @@ plumbing without hiding the HTTP contract behind a large framework. The goal
 is to make the common runtime path obvious while still letting developers own
 their vendor logic.
 
-Version `0.6.0` is the current documented baseline.
+Version `0.7.0` is the current documented baseline.
 
 ## Onboarding declarations
 
