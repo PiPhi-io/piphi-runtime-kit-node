@@ -2,12 +2,16 @@
 
 Small TypeScript helpers for building PiPhi runtime integrations in Node.js.
 
+## Managed listener port
+
+Core assigns the primary listener through `PORT`. Use `runtimePort(defaultPort)` when starting the server. The default is only for unmanaged local development; an invalid managed assignment raises an error rather than risking a collision.
+
 This package is intentionally thin. It removes repetitive PiPhi runtime
 plumbing without hiding the HTTP contract behind a large framework. The goal
 is to make the common runtime path obvious while still letting developers own
 their vendor logic.
 
-Version `0.6.0` is the current documented baseline.
+Version `0.7.0` is the current documented baseline.
 
 ## Onboarding declarations
 
